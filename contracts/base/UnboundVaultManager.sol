@@ -33,7 +33,10 @@ contract UnboundVaultManager {
     address public staking; // address of the pair where stake fee should be sent
 
     uint256 public PROTOCOL_FEE; // protocol fee to be taken for team and safu
-    address public feeTo; // address where protocol fee should be sent
+    address public team; // address where protocol fee should be sent
+
+    uint256 public safuShare; // share of the safu fund, 1e8 is 100%
+    address public safu; // address of the safu fund
 
     // checks if governance is calling
     modifier onlyGovernance() {
@@ -53,7 +56,7 @@ contract UnboundVaultManager {
      * @param _to Address of the receipient
      */
     function claim(address _token, address _to) external onlyGovernance {
-        require(address(pair) != _token);
+        require(address(pair) != _token && address(uToken) != _token);
         IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
     }
 
@@ -76,10 +79,10 @@ contract UnboundVaultManager {
 
     /**
      * @notice Changes address where the fees should be received
-     * @param _feeTo New fee to address
+     * @param _team New fee to address
      */
-    function changeFeeTo(address _feeTo) external onlyGovernance {
-        feeTo = _feeTo;
+    function changeTeamFeeAddress(address _team) external onlyGovernance {
+        team = _team;
     }
 
     /**
@@ -116,5 +119,17 @@ contract UnboundVaultManager {
      */
     function changeManager(address _manager) external onlyGovernance {
         manager = _manager;
+    }
+
+    /**
+     * @notice Distributes the fee collected to the contract
+     */
+    function distributeFee() external {
+        uint256 amount = IERC20(address(uToken)).balanceOf(address(this));
+        IERC20(address(uToken)).transfer(safu, amount.mul(safuShare).div(1e6));
+        IERC20(address(uToken)).transfer(
+            team,
+            amount.sub(amount.mul(safuShare).div(1e6))
+        );
     }
 }

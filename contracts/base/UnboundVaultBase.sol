@@ -33,7 +33,7 @@ contract UnboundVaultBase is UnboundVaultManager {
         uint256 fee;
 
         // mint the protocol fee to Vault in form of uToken
-        if (feeTo != address(0)) {
+        if (PROTOCOL_FEE > 0) {
             fee = _amount.mul(PROTOCOL_FEE).div(1e6);
             uToken.mint(address(this), fee);
         }
