@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.0;
 
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol';
 
@@ -9,6 +11,8 @@ import './interfaces/IUnboundVault.sol';
 import './interfaces/IUnboundVaultFactory.sol';
 
 contract UnboundToken is ERC20, ERC20Permit {
+    using SafeMath for uint256;
+
     address public governance;
     address public pendingGovernance;
 
@@ -57,11 +61,21 @@ contract UnboundToken is ERC20, ERC20Permit {
         _burn(_account, _amount);
     }
 
-    // TODO: Have a discussion with tarun regarding should we enable the vauld manually after 7 days
-    // or automatically do it
-    function addMinter(address _factory) external onlyGovernance {
-        minters[_factory] = true;
-        addTime[_factory] = block.timestamp;
+    /**
+     * @notice Adds the minter
+     * @param _minter address of the minter
+     */
+    function addMinter(address _minter) external onlyGovernance {
+        addTime[_minter] = block.timestamp;
+    }
+
+    /**
+     * @notice Enable the minter
+     * @param _minter Address of the minter
+     */
+    function enableMinter(address _minter) external onlyGovernance {
+        require(block.timestamp.sub(addTime[_minter]) >= 604800);
+        minters[_minter] = true;
     }
 
     /**

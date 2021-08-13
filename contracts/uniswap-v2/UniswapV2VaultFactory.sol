@@ -8,6 +8,7 @@ import '../interfaces/IERC20.sol';
 
 contract UniswapV2VaultFactory {
     mapping(address => bool) public allowed;
+    mapping(address => bool) public vaults;
 
     address public governance;
     address public pendingGovernance;
@@ -57,6 +58,7 @@ contract UniswapV2VaultFactory {
         );
         index = index + 1;
         vaultByIndex[index] = vault;
+        vaults[vault] = true;
     }
 
     /**
@@ -64,6 +66,7 @@ contract UniswapV2VaultFactory {
      * @param _vault Address of the vault to enable
      */
     function enableVault(address _vault) external onlyGovernance {
+        require(vaults[_vault]);
         allowed[_vault] = true;
     }
 
@@ -87,7 +90,7 @@ contract UniswapV2VaultFactory {
      * @notice Accept governance role, should be called from pending governance
      */
     function acceptGovernance() external {
-        require(msg.sender == pendingGovernance, 'no');
+        require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
     }
 }
