@@ -23,6 +23,9 @@ contract UniswapV2Vault is UnboundVaultBase {
     uint256 public allowedDelay;
     address[] public feeds;
 
+    event Lock(address user, uint256 amount, uint256 uTokenAmount);
+    event Unlock(address user, uint256 amount, uint256 uTokenAmount);
+
     constructor(
         address _pair,
         address _stablecoin,
@@ -125,6 +128,8 @@ contract UniswapV2Vault is UnboundVaultBase {
                 );
             }
         }
+
+        emit Lock(msg.sender, _amount, amount);
     }
 
     /**
@@ -200,6 +205,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         }
 
         require(_minCollateral <= amount, 'MIN');
+
+        emit Unlock(msg.sender, amount, _uTokenAmount);
     }
 
     /**
