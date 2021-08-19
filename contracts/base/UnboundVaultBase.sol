@@ -17,6 +17,10 @@ contract UnboundVaultBase is UnboundVaultManager {
     mapping(address => uint256) public collateral;
     mapping(address => uint256) public debt;
 
+    // user vaults
+    mapping(address => address) public yeildWallet;
+    mapping(address => uint256) public yeildWalletDeposit;
+
     /**
      * @dev Mints uToken and updates loan values
      * @param _account Address of the user issuing loan
@@ -34,7 +38,7 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         // mint the protocol fee to Vault in form of uToken
         if (PROTOCOL_FEE > 0) {
-            fee = _amount.mul(PROTOCOL_FEE).div(1e6);
+            fee = _amount.mul(PROTOCOL_FEE).div(secondBase);
             uToken.mint(address(this), fee);
         }
 
@@ -42,7 +46,7 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         // donate staking fee to the staking pool
         if (stakeFee > 0) {
-            fee = _amount.mul(stakeFee).div(1e6);
+            fee = _amount.mul(stakeFee).div(secondBase);
             uToken.mint(staking, fee);
         }
 

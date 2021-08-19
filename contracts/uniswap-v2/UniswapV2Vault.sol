@@ -5,12 +5,17 @@ pragma solidity 0.8.0;
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '../libraries/UniswapV2PriceProvider.sol';
 
+//  import interfaces
+import '../interfaces/IUnboundYeildWallet.sol';
+import '../interfaces/IUnboundYeildWalletFactory.sol';
+
 // contracts
 import '../base/UnboundVaultBase.sol';
 
+import '../UnboundYeildWallet.sol';
+
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
-    uint256 constant base = uint256(1e18);
 
     bool[] public isPeggedToUSD;
     uint256[] public decimals;
@@ -86,12 +91,40 @@ contract UniswapV2Vault is UnboundVaultBase {
     function lock(
         uint256 _amount,
         address _mintTo,
+        address _farming,
         uint256 _minUTokenAmount
     ) external returns (uint256 amount) {
+        // check if it's valid farming address
+        require(isValidYeildWalletFactory[_farming], 'IN');
+
         // transfer tokens to the vault contract
         require(pair.transferFrom(msg.sender, address(this), amount), 'TF');
-        // lock pool tkens and mint amount
+
+        // lock pool tokens and mint amount
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
+
+        // deploy to yeild wallet if required
+        if (_farming != address(0)) {
+            if (yeildWallet[msg.sender] == address(0)) {
+                // create vault
+                address wallet = IUnboundYeildWalletFactory(_farming).create(
+                    address(pair),
+                    msg.sender,
+                    address(this)
+                );
+                yeildWallet[msg.sender] = wallet;
+            } else {
+                yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender]
+                    .add(_amount);
+                // transfer tokens to the vault
+                pair.transfer(yeildWallet[msg.sender], _amount);
+                // deposit to yeild
+                IUnboundYeildWallet(yeildWallet[msg.sender]).deposit(
+                    _farming,
+                    _amount
+                );
+            }
+        }
     }
 
     /**
@@ -121,7 +154,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         // get total value in base asset
         uint256 value = _amount.mul(uint256(price)).div(base);
 
-        amount = value.mul(LTV).div(1e6);
+        amount = value.mul(LTV).div(secondBase);
 
         collateral[msg.sender] = collateral[msg.sender].add(_amount);
 
@@ -153,8 +186,18 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         burn(msg.sender, _uTokenAmount);
 
-        // give the pool tokens back
-        pair.transfer(msg.sender, amount);
+        if (yeildWalletDeposit[msg.sender] > 0) {
+            // remove LP tokens from yeild wallet first
+            uint256 balanceBefore = pair.balanceOf(address(this));
+            IUnboundYeildWallet(yeildWallet[msg.sender]).withdraw(amount);
+            uint256 balanceAfter = pair.balanceOf(address(this));
+
+            // transfer pool tokens back to the user
+            pair.transfer(msg.sender, balanceAfter.sub(balanceBefore));
+        } else {
+            // give the pool tokens back
+            pair.transfer(msg.sender, amount);
+        }
 
         require(_minCollateral <= amount, 'MIN');
     }
@@ -180,18 +223,18 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         uint256 currentCR = uint256(price)
             .mul(collateral[msg.sender])
-            .mul(1e6)
+            .mul(secondBase)
             .div(debt[msg.sender]);
 
         // multiply by 1e24 to normalize it current CR (base for nomalization + 1e6 added in above step)
-        if (CR.mul(base.mul(1e6)).div(1e6) <= currentCR) {
+        if (CR.mul(base.mul(secondBase)).div(secondBase) <= currentCR) {
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(
                 debt[msg.sender]
             );
         } else {
             uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
             uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
-            uint256 valueAfter = (CR.mul(loanAfter).mul(1e6)).div(base);
+            uint256 valueAfter = (CR.mul(loanAfter).mul(secondBase)).div(base);
             amount = valueStart.sub(valueAfter).div(uint256(price));
         }
     }

@@ -18,9 +18,14 @@ import '../interfaces/IUnboundToken.sol';
 contract UnboundVaultManager {
     using SafeMath for uint256;
 
+    uint256 base = uint256(1e18);
+    uint256 secondBase = uint256(1e6);
+
     address public factory; // address of vault factory
     IUniswapV2Pair public pair; // address of liquidity pool token
     IUnboundToken public uToken; // address of Unbound token to mint
+
+    mapping(address => bool) public isValidYeildWalletFactory; // Supported factories for yeildWallets
 
     address public governance;
     address public manager;
@@ -126,10 +131,35 @@ contract UnboundVaultManager {
      */
     function distributeFee() external {
         uint256 amount = IERC20(address(uToken)).balanceOf(address(this));
-        IERC20(address(uToken)).transfer(safu, amount.mul(safuShare).div(1e6));
+        IERC20(address(uToken)).transfer(
+            safu,
+            amount.mul(safuShare).div(secondBase)
+        );
         IERC20(address(uToken)).transfer(
             team,
-            amount.sub(amount.mul(safuShare).div(1e6))
+            amount.sub(amount.mul(safuShare).div(secondBase))
         );
+    }
+
+    /**
+     * @notice Enable yeildWallet
+     * @param _factory Address of the yeildWallet factory to enable
+     */
+    function enableYeildWalletFactory(address _factory)
+        external
+        onlyGovernance
+    {
+        isValidYeildWalletFactory[_factory] = true;
+    }
+
+    /**
+     * @notice Disable yeildWallet factory
+     * @param _factory Address of the yeildWallet factory to disable
+     */
+    function disableYeildWalletFactory(address _factory)
+        external
+        onlyGovernance
+    {
+        isValidYeildWalletFactory[_factory] = false;
     }
 }
