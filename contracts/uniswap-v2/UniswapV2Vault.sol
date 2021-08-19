@@ -27,6 +27,8 @@ contract UniswapV2Vault is UnboundVaultBase {
     event Unlock(address user, uint256 amount, uint256 uTokenAmount);
 
     constructor(
+        address _uToken,
+        address _governance,
         address _pair,
         address _stablecoin,
         address[] memory _feeds,
@@ -34,6 +36,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         uint256 _allowedDelay,
         address _staking
     ) {
+        uToken = IUnboundToken(_uToken);
+        governance = _governance;
         pair = IUniswapV2Pair(_pair);
 
         // decimals array

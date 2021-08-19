@@ -31,6 +31,8 @@ contract UniswapV2VaultFactory {
 
     /**
      * @notice Creates new vault
+     * @param _uToken Address of the Unbound Token
+     * @param _governance Address of the governance
      * @param _pair Address of the pool token
      * @param _stablecoin Address of the stablecoin
      * @param _feeds Array of the chainlink feeds to get weighed asset
@@ -39,6 +41,8 @@ contract UniswapV2VaultFactory {
      * @param _staking Address where the stake fees should be donated
      */
     function createVault(
+        address _uToken,
+        address _governance,
         address _pair,
         address _stablecoin,
         address[] memory _feeds,
@@ -48,6 +52,8 @@ contract UniswapV2VaultFactory {
     ) external returns (address vault) {
         vault = address(
             new UniswapV2Vault(
+                _uToken,
+                _governance,
                 _pair,
                 _stablecoin,
                 _feeds,
