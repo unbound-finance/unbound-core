@@ -8,6 +8,7 @@ import '../libraries/UniswapV2PriceProvider.sol';
 //  import interfaces
 import '../interfaces/IUnboundYeildWallet.sol';
 import '../interfaces/IUnboundYeildWalletFactory.sol';
+import '../interfaces/IUnboundVaultFactory.sol';
 
 // contracts
 import '../base/UnboundVaultBase.sol';
@@ -56,6 +57,9 @@ contract UniswapV2Vault is UnboundVaultBase {
         allowedDelay = _allowedDelay;
 
         staking = _staking;
+
+        factory = msg.sender;
+        governance = IUnboundVaultFactory(msg.sender).governance();
     }
 
     /**
