@@ -20,6 +20,12 @@ let oracleLibrary;
 let feedEthUsd;
 let ethDaiVault;
 
+const CR = "50000000" // 50%
+const LTV = "50000000" // 50%
+const PROTOCOL_FEE = "500000" // 0.5%
+const stakeFee = "500000" // 0.5% 
+const safuShare = "40000000" // 40%
+
 describe("UnboundVaultManager", function() {
 
     beforeEach(async function () {
@@ -64,6 +70,8 @@ describe("UnboundVaultManager", function() {
         feedEthUsd.setPrice("300000000000") // 1 ETH = $3000
 
         await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
             ethDaiPair,
             tDai.address,
             [feedEthUsd.address],
@@ -90,6 +98,253 @@ describe("UnboundVaultManager", function() {
         it("should set correct governance address", async function() { 
             expect(await ethDaiVault.governance()).to.equal(signers[0].address);
         });
+        it("default pending governance address should be zero address", async function() { 
+            expect(await ethDaiVault.pendingGovernance()).to.equal(zeroAddress);
+        });
+        it("default manager address should be zero address", async function() { 
+            expect(await ethDaiVault.manager()).to.equal(zeroAddress);
+        });
     });
     
+    describe("#claim", async () => {
+        it("should revert if caller is not governance", async function() { 
+            await expect(
+                ethDaiVault
+                    .connect(signers[1])    
+                    .claim(tEth.address, signers[0].address))
+                    .to.be.revertedWith('NA');
+        });
+
+        it("should revert if trying to withdraw pool lpt", async function() { 
+            await expect(
+                ethDaiVault
+                    .claim(ethDaiPair.address, signers[0].address))
+                    .to.be.reverted;
+        });
+
+        it("should revert if trying to withdraw und", async function() { 
+            await expect(
+                ethDaiVault
+                    .claim(ethDaiPair.address, signers[0].address))
+                    .to.be.reverted;
+        });
+
+        it("should transfer token to address", async function() { 
+            await tEth.transfer(ethDaiVault.address, "1000");
+
+            expect(await tEth.balanceOf(ethDaiVault.address)).to.equal("1000");
+            expect(await tEth.balanceOf(signers[1].address)).to.equal("0");
+
+            await expect(ethDaiVault.claim(tEth.address, signers[1].address))
+                .to.emit(tEth, "Transfer")
+                .withArgs(
+                    ethDaiVault.address,
+                    signers[1].address,
+                    "1000"
+                );
+
+            expect(await tEth.balanceOf(ethDaiVault.address)).to.equal("0");
+            expect(await tEth.balanceOf(signers[1].address)).to.equal("1000");
+
+        });
+
+    });
+
+    describe("#changeManager", async () => {
+        it("default manager address should be zero address", async function() { 
+            expect(await ethDaiVault.manager()).to.equal(zeroAddress);
+        });
+        it("should revert if caller is not governance", async function() { 
+            await expect(
+                ethDaiVault
+                    .connect(signers[1].address)
+                    .changeManager(signers[1].address))
+                    .to.be.reverted;
+        });
+        it("should change manager address", async function() { 
+            await ethDaiVault.changeManager(signers[1].address)
+            expect(await ethDaiVault.manager()).to.equal(signers[1].address);
+        });
+    })
+
+    describe("#changeGovernance", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeGovernance(signers[1].address))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeGovernance(signers[1].address);
+            expect(await ethDaiVault.pendingGovernance()).to.equal(signers[1].address);
+        });
+    })
+
+    describe("#acceptGovernance", async () => {
+        it("should revert if caller is not pending governance", async () => {
+            expect(ethDaiVault.acceptGovernance()).to.be.reverted;
+        });
+        it("should set governance as pending governance", async () => {
+            await ethDaiVault.changeGovernance(signers[1].address);
+            expect(await ethDaiVault.pendingGovernance()).to.equal(signers[1].address);
+        });
+        it("should revert if not accepted by pending governance", async () => {
+            await ethDaiVault.changeGovernance(signers[1].address);
+            await expect(ethDaiVault.acceptGovernance()).to.be.reverted;
+        });
+        it("should set new governance address", async () => {
+            await ethDaiVault.changeGovernance(signers[1].address);
+            await ethDaiVault.connect(signers[1]).acceptGovernance()
+            expect(await ethDaiVault.governance()).to.equal(signers[1].address);
+        });
+  });
+
+    describe("#CR", async () => {
+        beforeEach("set manager address", async function(){
+            await ethDaiVault.changeManager(signers[1].address)
+        })
+        it("default CR value should be zero address", async function() { 
+            expect(await ethDaiVault.CR()).to.equal("0");
+        });
+        it("should revert if caller is not governance or manager", async function() { 
+            await expect(
+                ethDaiVault
+                .connect(signers[2].address)
+                .changeCR(CR))
+                .to.be.reverted;
+        });
+        it("should set CR vaule if caller is governance", async function() { 
+            await ethDaiVault.connect(signers[0]).changeCR(CR)
+            expect(await ethDaiVault.CR()).to.equal(CR);
+        });
+
+        it("should set CR vaule if caller is manager", async function() { 
+            await ethDaiVault.connect(signers[1]).changeCR(CR)
+            expect(await ethDaiVault.CR()).to.equal(CR);
+        });
+
+    })
+
+    describe("#LTV", async () => {
+        beforeEach("set manager address", async function(){
+            await ethDaiVault.changeManager(signers[1].address)
+        })
+        it("default LTV value should be zero address", async function() { 
+            expect(await ethDaiVault.LTV()).to.equal("0");
+        });
+        it("should revert if caller is not governance or manager", async function() { 
+            await expect(
+                ethDaiVault
+                .connect(signers[2].address)
+                .changeLTV(LTV))
+                .to.be.reverted;
+        });
+        it("should set LTV vaule if caller is governance", async function() { 
+            await ethDaiVault.connect(signers[0]).changeLTV(LTV)
+            expect(await ethDaiVault.LTV()).to.equal(LTV);
+        });
+
+        it("should set LTV vaule if caller is manager", async function() { 
+            await ethDaiVault.connect(signers[1]).changeLTV(LTV)
+            expect(await ethDaiVault.LTV()).to.equal(LTV);
+        });
+
+    })
+
+    describe("#changeTeamFeeAddress", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeTeamFeeAddress(signers[1].address))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeTeamFeeAddress(signers[1].address);
+            expect(await ethDaiVault.team()).to.equal(signers[1].address);
+        });
+    })
+
+    describe("#changeFee", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeFee(PROTOCOL_FEE))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeFee(PROTOCOL_FEE);
+            expect(await ethDaiVault.PROTOCOL_FEE()).to.equal(PROTOCOL_FEE);
+        });
+    })
+
+    describe("#changeStakeFee", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeStakeFee(stakeFee))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeStakeFee(stakeFee);
+            expect(await ethDaiVault.stakeFee()).to.equal(stakeFee);
+        });
+    })
+
+    describe("#changeSafuShare", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeSafuShare(safuShare))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeSafuShare(safuShare);
+            expect(await ethDaiVault.safuShare()).to.equal(safuShare);
+        });
+    })
+
+    describe("#changeSafuAddress", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeSafuAddress(signers[2].address))
+                .to.be.revertedWith("NA");
+        });
+        it("should set pending governance as new governance address", async () => {
+            await ethDaiVault.changeSafuAddress(signers[2].address);
+            expect(await ethDaiVault.safu()).to.equal(signers[2].address);
+        });
+    })
+
+    describe("#distributeFee", function() {
+        it("should distribute fees to correct address", async () => {
+            // Transfer UND to vault
+            // await und.transfer(ethDaiVault.address, "1000");
+
+            // Change team address
+            await ethDaiVault.changeTeamFeeAddress(signers[1].address);
+
+            // Chnage Safu address
+            await ethDaiVault.changeSafuAddress(signers[2].address);
+
+            let distribute = await ethDaiVault.distributeFee()
+
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "0");
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, "0");
+
+        });
+    })
+
+    describe("#enableYeildWalletFactory", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).enableYeildWalletFactory(signers[2].address))
+                .to.be.revertedWith("NA");
+        });
+        it("should enable factory wallet address", async () => {
+            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(true);
+        });
+    })
+
+    describe("#disableYeildWalletFactory", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).disableYeildWalletFactory(signers[2].address))
+                .to.be.revertedWith("NA");
+        });
+        it("should enable factory wallet address", async () => {
+            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(true);
+
+            await ethDaiVault.disableYeildWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(false);
+        });
+    })
 });
