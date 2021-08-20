@@ -102,6 +102,8 @@ describe("UniswapV2VaultFactory", function() {
   describe("#createVault", async () => {
     it("should create vault with valid index", async () => {
         await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
             ethDaiPair,
             tDai.address,
             [feedEthUsd.address],
@@ -118,6 +120,8 @@ describe("UniswapV2VaultFactory", function() {
 
     // it("should revert if same pair vault is created for second time", async () => {
     //     await vaultFactory.createVault(
+    //         und.address,
+    //         signers[0].address,
     //         ethDaiPair,
     //         tDai.address,
     //         [feedEthUsd.address],
@@ -129,6 +133,8 @@ describe("UniswapV2VaultFactory", function() {
     //     expect(await vaultFactory.index()).to.be.equal(1);
 
     //     await expect(vaultFactory.createVault(
+    //         und.address,
+    //         signers[0].address,
     //         ethDaiPair,
     //         tDai.address,
     //         [feedEthUsd.address],
@@ -159,6 +165,8 @@ describe("UniswapV2VaultFactory", function() {
     it("should allow vault", async () => {
 
         await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
             ethDaiPair,
             tDai.address,
             [feedEthUsd.address],
@@ -182,6 +190,8 @@ describe("UniswapV2VaultFactory", function() {
 
     beforeEach(async function () {
         await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
             ethDaiPair,
             tDai.address,
             [feedEthUsd.address],
