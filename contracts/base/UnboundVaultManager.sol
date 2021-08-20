@@ -103,6 +103,22 @@ contract UnboundVaultManager {
     }
 
     /**
+     * @notice Changes safuShare
+     * @param _safuShare New fee. 1e8 is 100%
+     */
+    function changeSafuShare(uint256 _safuShare) external onlyGovernance {
+        safuShare = _safuShare;
+    }
+
+    /**
+     * @notice Changes address where the safu fund should be received
+     * @param _safu New safu fund address
+     */
+    function changeSafuAddress(address _safu) external onlyGovernance {
+        safu = _safu;
+    }
+
+    /**
      * @notice Change governance address
      * @param _governance New governance address
      */
