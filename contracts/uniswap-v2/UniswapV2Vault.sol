@@ -60,6 +60,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         allowedDelay = _allowedDelay;
 
         staking = _staking;
+
+        factory = msg.sender;
     }
 
     /**
