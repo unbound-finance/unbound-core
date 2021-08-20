@@ -785,6 +785,11 @@
     "@types/bn.js" "*"
     "@types/underscore" "*"
 
+"@uniswap/lib@^1.1.4":
+  version "1.1.4"
+  resolved "https://registry.yarnpkg.com/@uniswap/lib/-/lib-1.1.4.tgz#85100cddcdb61e0b7eae9b8e9e21525e147c47f3"
+  integrity sha512-5una/3a2dPzPN0moDBsa9LfTxCjZjEiLEkN75wjwplmDU4oFqneVAzVA3Heq+DadEk3k17cszAbSMcaIu7hLfg==
+
 "@uniswap/v2-core@^1.0.1":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@uniswap/v2-core/-/v2-core-1.0.1.tgz#af8f508bf183204779938969e2e54043e147d425"
