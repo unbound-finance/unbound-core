@@ -19,7 +19,7 @@ contract UnboundVaultManager {
     using SafeMath for uint256;
 
     uint256 base = uint256(1e18);
-    uint256 secondBase = uint256(1e6);
+    uint256 secondBase = uint256(1e8);
 
     address public factory; // address of vault factory
     IUniswapV2Pair public pair; // address of liquidity pool token
