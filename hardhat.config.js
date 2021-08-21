@@ -26,4 +26,11 @@ module.exports = {
       }
      }
   },
+  networks: {
+    hardhat: {
+      accounts: {
+        mnemonic: "anxiety false usage noble consider few decline improve robust behave peasant put"
+      }
+    }
+  },
 }
