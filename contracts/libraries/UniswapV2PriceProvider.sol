@@ -195,23 +195,26 @@ library UniswapV2PriceProvider {
     ) external view returns (int256) {
         IUniswapV2Pair pair = IUniswapV2Pair(_pair);
 
-        uint256 chainlinkPrice;
+        uint256 chainlinkPrice0;
+        uint256 chainlinkPrice1;
         if (_isPeggedToUSD[0]) {
-            chainlinkPrice = base;
+            chainlinkPrice0 = base;
+            chainlinkPrice1 = uint256(getLatestPrice(_feeds, _allowedDelay));
         } else {
-            chainlinkPrice = uint256(getLatestPrice(_feeds, _allowedDelay));
+            chainlinkPrice0 = uint256(getLatestPrice(_feeds, _allowedDelay));
+            chainlinkPrice1 = base;
         }
 
         //Get token reserves in ethers
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
 
         uint256 reserveInStablecoin0 = getReserveValue(
-            chainlinkPrice,
+            chainlinkPrice0,
             reserve0,
             _decimals[0]
         );
         uint256 reserveInStablecoin1 = getReserveValue(
-            chainlinkPrice,
+            chainlinkPrice1,
             reserve1,
             _decimals[1]
         );
