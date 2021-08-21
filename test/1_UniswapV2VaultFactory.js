@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+const ethPrice = "320000000000"; // $3200
 
 let signers;
 let governance;
@@ -55,12 +56,12 @@ describe("UniswapV2VaultFactory", function() {
         await uniswapFactory.createPair(und.address, tDai.address); 
         await uniswapFactory.createPair(tEth.address, tDai.address);
 
-        undDaiPair = uniswapFactory.getPair(und.address, tDai.address)
-        ethDaiPair = uniswapFactory.getPair(tEth.address, tDai.address)
+        undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
+        ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
 
         let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
         feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
-        feedEthUsd.setPrice("300000000000") // 1 ETH = $3000
+        await feedEthUsd.setPrice(ethPrice) // 1 ETH = $3000
     });
 
     describe("#constructor", async () => {
