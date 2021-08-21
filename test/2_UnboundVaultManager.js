@@ -67,7 +67,7 @@ describe("UnboundVaultManager", function() {
 
         let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
         feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
-        feedEthUsd.setPrice("300000000000") // 1 ETH = $3000
+        await feedEthUsd.setPrice("300000000000") // 1 ETH = $3000
 
         await vaultFactory.createVault(
             und.address,
