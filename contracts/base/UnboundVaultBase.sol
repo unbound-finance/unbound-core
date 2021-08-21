@@ -62,11 +62,9 @@ contract UnboundVaultBase is UnboundVaultManager {
      * @param _account Address of the user to burn tokens from
      * @param _amount Amount to be burned
      */
-    function burn(address _account, uint256 _amount)
-        internal
-        returns (uint256 amount)
+    function burn(address _account, uint256 _amount) internal
     {
         uToken.burn(_account, _amount);
-        debt[_account] = debt[_account].sub(amount);
+        debt[_account] = debt[_account].sub(_amount);
     }
 }
