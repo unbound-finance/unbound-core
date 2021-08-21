@@ -86,7 +86,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         // get approval using permit
         pair.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         // transfer tokens to vault contract
-        require(pair.transferFrom(msg.sender, address(this), amount), 'TF');
+        require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
         // lock pool tokens and mint uTokens
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
     }
@@ -107,7 +107,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         require(isValidYeildWalletFactory[_farming], 'IN');
 
         // transfer tokens to the vault contract
-        require(pair.transferFrom(msg.sender, address(this), amount), 'TF');
+        require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
 
         // lock pool tokens and mint amount
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
