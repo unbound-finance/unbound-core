@@ -17,6 +17,12 @@ contract UniswapV2VaultFactory {
 
     mapping(uint256 => address) public vaultByIndex;
 
+    event NewVault(address _vault, uint256 _index);
+    event ChangeGovernance(address _governance);
+
+    event EnableVault(address _vault);
+    event DisableVault(address _vault);
+
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
         _;
@@ -65,6 +71,7 @@ contract UniswapV2VaultFactory {
         index = index + 1;
         vaultByIndex[index] = vault;
         vaults[vault] = true;
+        emit NewVault(vault, index);
     }
 
     /**
@@ -74,6 +81,7 @@ contract UniswapV2VaultFactory {
     function enableVault(address _vault) external onlyGovernance {
         require(vaults[_vault]);
         allowed[_vault] = true;
+        emit EnableVault(_vault);
     }
 
     /**
@@ -82,6 +90,7 @@ contract UniswapV2VaultFactory {
      */
     function disableVault(address _vault) external onlyGovernance {
         allowed[_vault] = false;
+        emit DisableVault(_vault);
     }
 
     /**
@@ -90,6 +99,7 @@ contract UniswapV2VaultFactory {
      */
     function changeGovernance(address _governance) external onlyGovernance {
         pendingGovernance = _governance;
+        emit ChangeGovernance(_governance);
     }
 
     /**
