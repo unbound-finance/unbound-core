@@ -79,6 +79,11 @@ describe("UniswapV2VaultFactory", function() {
             await vaultFactory.changeGovernance(signers[1].address);
             expect(await vaultFactory.pendingGovernance()).to.equal(signers[1].address);
         });
+        it("should emit change governance event", async function() { 
+            await expect(vaultFactory.changeGovernance(signers[1].address))
+                .to.emit(vaultFactory, "ChangeGovernance")
+                .withArgs(signers[1].address);
+        })
     })
 
     describe("#acceptGovernance", async () => {
@@ -118,6 +123,24 @@ describe("UniswapV2VaultFactory", function() {
         expect(await vaultFactory.vaults(await vaultFactory.vaultByIndex(1))).to.be.equal(true)
 
     });
+
+    it("should emit new vault event", async function() { 
+
+        let tx = await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1)
+
+        expect(tx).to.emit(vaultFactory, "NewVault").withArgs(vault, 1);
+    })
 
     // it("should revert if same pair vault is created for second time", async () => {
     //     await vaultFactory.createVault(
@@ -184,6 +207,26 @@ describe("UniswapV2VaultFactory", function() {
 
     });
 
+    it("should emit enable vault event", async function() { 
+        
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        await expect(vaultFactory.enableVault(vault))
+            .to.emit(vaultFactory, "EnableVault")
+            .withArgs(vault);
+    });
+
   })
 
   describe("#disableVault", async () => {
@@ -223,6 +266,13 @@ describe("UniswapV2VaultFactory", function() {
         expect(await vaultFactory.allowed(vault)).to.be.equal(false);
 
     });
+
+    it("should emit disable vault event", async function() { 
+
+        await expect(vaultFactory.disableVault(vault))
+            .to.emit(vaultFactory, "DisableVault")
+            .withArgs(vault);
+    })
 
   })
     
