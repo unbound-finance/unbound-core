@@ -165,6 +165,11 @@ describe("UnboundVaultManager", function() {
             await ethDaiVault.changeManager(signers[1].address)
             expect(await ethDaiVault.manager()).to.equal(signers[1].address);
         });
+        it("should emit change manager share event", async function() { 
+            await expect(ethDaiVault.changeManager(signers[1].address))
+                .to.emit(ethDaiVault, "ChangeManager")
+                .withArgs(signers[1].address);
+        });
     })
 
     describe("#changeGovernance", function() {
@@ -175,6 +180,12 @@ describe("UnboundVaultManager", function() {
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeGovernance(signers[1].address);
             expect(await ethDaiVault.pendingGovernance()).to.equal(signers[1].address);
+        });
+        it("should emit change governance event", async () => {
+            await expect(
+                ethDaiVault.changeGovernance(signers[1].address))
+                .to.emit(ethDaiVault, "ChangeGovernance")
+                .withArgs(signers[1].address)
         });
     })
 
@@ -221,6 +232,12 @@ describe("UnboundVaultManager", function() {
             expect(await ethDaiVault.CR()).to.equal(CR);
         });
 
+        it("should emit ChangeCR event", async function() { 
+            await expect(ethDaiVault.changeCR(CR))
+                .to.emit(ethDaiVault, "ChangeCR")
+                .withArgs(CR);
+        });
+
     })
 
     describe("#LTV", async () => {
@@ -247,6 +264,12 @@ describe("UnboundVaultManager", function() {
             expect(await ethDaiVault.LTV()).to.equal(LTV);
         });
 
+        it("should emit ChangeLTV event", async function() { 
+            await expect(ethDaiVault.changeLTV(LTV))
+                .to.emit(ethDaiVault, "ChangeLTV")
+                .withArgs(LTV);
+        });
+
     })
 
     describe("#changeTeamFeeAddress", function() {
@@ -269,6 +292,11 @@ describe("UnboundVaultManager", function() {
             await ethDaiVault.changeFee(PROTOCOL_FEE);
             expect(await ethDaiVault.PROTOCOL_FEE()).to.equal(PROTOCOL_FEE);
         });
+        it("should emit change protocol fee event", async function() { 
+            await expect(ethDaiVault.changeFee(PROTOCOL_FEE))
+                .to.emit(ethDaiVault, "ChangeProtocolFee")
+                .withArgs(PROTOCOL_FEE);
+        });
     })
 
     describe("#changeStakeFee", function() {
@@ -279,6 +307,11 @@ describe("UnboundVaultManager", function() {
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeStakeFee(stakeFee);
             expect(await ethDaiVault.stakeFee()).to.equal(stakeFee);
+        });
+        it("should emit change stake fee event", async function() { 
+            await expect(ethDaiVault.changeStakeFee(stakeFee))
+                .to.emit(ethDaiVault, "ChangeStakeFee")
+                .withArgs(stakeFee);
         });
     })
 
@@ -291,6 +324,11 @@ describe("UnboundVaultManager", function() {
             await ethDaiVault.changeSafuShare(safuShare);
             expect(await ethDaiVault.safuShare()).to.equal(safuShare);
         });
+        it("should emit change safu share event", async function() { 
+            await expect(ethDaiVault.changeSafuShare(safuShare))
+                .to.emit(ethDaiVault, "ChangeSafuShare")
+                .withArgs(safuShare);
+        });
     })
 
     describe("#changeSafuAddress", function() {
@@ -301,6 +339,11 @@ describe("UnboundVaultManager", function() {
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeSafuAddress(signers[2].address);
             expect(await ethDaiVault.safu()).to.equal(signers[2].address);
+        });
+        it("should emit change safu share event", async function() { 
+            await expect(ethDaiVault.changeSafuAddress(signers[2].address))
+                .to.emit(ethDaiVault, "ChangeSafu")
+                .withArgs(signers[2].address);
         });
     })
 
@@ -332,6 +375,11 @@ describe("UnboundVaultManager", function() {
             await ethDaiVault.enableYeildWalletFactory(signers[2].address);
             expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(true);
         });
+        it("should emit enable yeild factory event", async function() { 
+            await expect(ethDaiVault.enableYeildWalletFactory(signers[2].address))
+                .to.emit(ethDaiVault, "EnableYeildFactory")
+                .withArgs(signers[2].address);
+        });
     })
 
     describe("#disableYeildWalletFactory", function() {
@@ -345,6 +393,13 @@ describe("UnboundVaultManager", function() {
 
             await ethDaiVault.disableYeildWalletFactory(signers[2].address);
             expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(false);
+        });
+        it("should emit disable yeild factory event", async function() { 
+            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
+
+            await expect(ethDaiVault.disableYeildWalletFactory(signers[2].address))
+                .to.emit(ethDaiVault, "DisableYeildFactory")
+                .withArgs(signers[2].address);
         });
     })
 });
