@@ -23,8 +23,8 @@ contract UniswapV2Vault is UnboundVaultBase {
     uint256 public allowedDelay;
     address[] public feeds;
 
-    event Lock(address user, uint256 amount, uint256 uTokenAmount);
-    event Unlock(address user, uint256 amount, uint256 uTokenAmount);
+    event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
+    event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
 
     constructor(
         address _uToken,
@@ -260,7 +260,10 @@ contract UniswapV2Vault is UnboundVaultBase {
             IERC20(address(uToken)).balanceOf(msg.sender) == debt[msg.sender],
             'BAL'
         );
-        burn(msg.sender, debt[msg.sender]);
-        pair.transfer(msg.sender, collateral[msg.sender]);
+        uint256 userDebt = debt[msg.sender];
+        uint256 userCollateral = collateral[msg.sender];
+        burn(msg.sender, userDebt);
+        pair.transfer(msg.sender, userCollateral);
+        emit Unlock(msg.sender, userCollateral, userDebt);
     }
 }

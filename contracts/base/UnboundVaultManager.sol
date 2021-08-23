@@ -43,6 +43,23 @@ contract UnboundVaultManager {
     uint256 public safuShare; // share of the safu fund, 1e8 is 100%
     address public safu; // address of the safu fund
 
+    // events
+    event ChangeGovernance(address _governance);
+    event ChangeManager(address _manager);
+
+    event ChangeLTV(uint256 _LTV);
+    event ChangeCR(uint256 _CR);
+
+    event ChangeTeam(uint256 _team);
+    event ChangeSafu(address _safu);
+    event ChangeStakeFee(uint256 _fee);
+    event ChangeProtocolFee(uint256 _PROTOCOL_FEE);
+    event ChangeSafuShare(uint256 _safuShare);
+
+    event EnableYeildFactory(address _factory);
+    event DisableYeildFactory(address _factory);
+    event ClaimTokens(address _token, uint256 _amount);
+
     // checks if governance is calling
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
@@ -71,6 +88,7 @@ contract UnboundVaultManager {
      */
     function changeCR(uint256 _CR) external governanceAndManager {
         CR = _CR;
+        emit ChangeCR(_CR);
     }
 
     /**
@@ -80,6 +98,7 @@ contract UnboundVaultManager {
     function changeLTV(uint256 _LTV) external governanceAndManager {
         require(_LTV <= 1e8);
         LTV = _LTV;
+        emit ChangeLTV(_LTV);
     }
 
     /**
@@ -96,10 +115,16 @@ contract UnboundVaultManager {
      */
     function changeFee(uint256 _fee) external onlyGovernance {
         PROTOCOL_FEE = _fee;
+        emit ChangeProtocolFee(_fee);
     }
 
+    /**
+     * @notice Change Stake Fee
+     * @param _stakeFee new stake fee
+     */
     function changeStakeFee(uint256 _stakeFee) external onlyGovernance {
         stakeFee = _stakeFee;
+        emit ChangeStakeFee(_stakeFee);
     }
 
     /**
@@ -108,6 +133,7 @@ contract UnboundVaultManager {
      */
     function changeSafuShare(uint256 _safuShare) external onlyGovernance {
         safuShare = _safuShare;
+        emit ChangeSafuShare(_safuShare);
     }
 
     /**
@@ -116,6 +142,7 @@ contract UnboundVaultManager {
      */
     function changeSafuAddress(address _safu) external onlyGovernance {
         safu = _safu;
+        emit ChangeSafu(_safu);
     }
 
     /**
@@ -124,6 +151,7 @@ contract UnboundVaultManager {
      */
     function changeGovernance(address _governance) external onlyGovernance {
         pendingGovernance = _governance;
+        emit ChangeGovernance(_governance);
     }
 
     /**
@@ -140,6 +168,7 @@ contract UnboundVaultManager {
      */
     function changeManager(address _manager) external onlyGovernance {
         manager = _manager;
+        emit ChangeManager(_manager);
     }
 
     /**
@@ -166,6 +195,7 @@ contract UnboundVaultManager {
         onlyGovernance
     {
         isValidYeildWalletFactory[_factory] = true;
+        emit EnableYeildFactory(_factory);
     }
 
     /**
@@ -177,5 +207,6 @@ contract UnboundVaultManager {
         onlyGovernance
     {
         isValidYeildWalletFactory[_factory] = false;
+        emit DisableYeildFactory(_factory);
     }
 }

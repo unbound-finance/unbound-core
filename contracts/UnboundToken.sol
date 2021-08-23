@@ -20,6 +20,10 @@ contract UnboundToken is ERC20, ERC20Permit {
     mapping(address => bool) public minters;
     mapping(address => uint256) public addTime;
 
+    event AddMinter(address _minter);
+    event EnableMinter(address _minter);
+    event ChangeGovernance(address _governance);
+
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
         _;
@@ -67,6 +71,7 @@ contract UnboundToken is ERC20, ERC20Permit {
      */
     function addMinter(address _minter) external onlyGovernance {
         addTime[_minter] = block.timestamp;
+        emit AddMinter(_minter);
     }
 
     /**
@@ -76,6 +81,7 @@ contract UnboundToken is ERC20, ERC20Permit {
     function enableMinter(address _minter) external onlyGovernance {
         require(block.timestamp.sub(addTime[_minter]) >= 604800);
         minters[_minter] = true;
+        emit EnableMinter(_minter);
     }
 
     /**
@@ -85,13 +91,14 @@ contract UnboundToken is ERC20, ERC20Permit {
     function changeGovernance(address _governance) external onlyGovernance {
         require(_governance != address(0));
         pendingGovernance = _governance;
+        emit ChangeGovernance(_governance);
     }
 
     /**
      * @notice Accept governance role
      */
     function acceptGovernance() external {
-        require(msg.sender == pendingGovernance, 'no');
+        require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
     }
 }
