@@ -39,7 +39,7 @@ let accountsPkey = [
     "0xbb4a887e10689e6b2574760c2965a3cfc6013062b2d9f71bb6ce5cf08546e61a"
 ]
 
-describe("UniswapV2VaultFactory", function() {
+describe("UniswapV2Vault", function() {
 
     beforeEach(async function () {
         signers = await ethers.getSigners();
@@ -730,7 +730,7 @@ describe("UniswapV2VaultFactory", function() {
         });
 
 
-        it("should revert if farmin wallet is not valid", async function() { 
+        it("should revert if farming wallet is not valid", async function() { 
 
             await ethDaiVault.disableYeildWalletFactory(zeroAddress);
 
@@ -924,12 +924,620 @@ describe("UniswapV2VaultFactory", function() {
 
     describe("#unlock", async () => {
 
-        
+        beforeEach(async function(){
+            let lockAmount = ethers.utils.parseEther("1").toString();
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        })
 
+        it("should revert if uTokenAmount burn amount is more then debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let expectedMintAmount = (new BigNumber(debt).plus("1")).toFixed();
+
+            await expect(ethDaiVault.unlock(expectedMintAmount, "1"))
+                .to.be.revertedWith("BAL")
+        })
+
+        it("should revert if minCollateral amount is less then received amount", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let expectedLPTAmount = (new BigNumber(collateral).plus("1")).toFixed();
+
+            await expect(ethDaiVault.unlock(debt, expectedLPTAmount))
+                .to.be.revertedWith("MIN")
+        })
+
+        it("unlock - should emit unlock and burn event after repaying all debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let burn = await ethDaiVault.unlock(debt, collateral);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateral, debt)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debt)
+        })
+
+        it("unlock - should update debt and collateral to 0 after repaying all debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await ethDaiVault.unlock(debt, collateral);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - should burn UND and transfer LPT back to user after repaying all debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            await ethDaiVault.unlock(debt, collateral);
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debt)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateral)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateral)).toFixed();
+
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+        })
+
+
+        it("unlock - should emit unlock and burn event after repaying half debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let halfDebt = (new BigNumber(debt).dividedBy("2")).toFixed()
+            let halfCollateral = (new BigNumber(collateral).dividedBy("2")).toFixed()
+
+            let burn = await ethDaiVault.unlock(halfDebt, halfCollateral);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, halfCollateral, halfDebt)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, halfDebt)
+        })
+
+        it("unlock - should update debt and collateral after repaying half debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let halfDebt = (new BigNumber(debt).dividedBy("2")).toFixed()
+            let halfCollateral = (new BigNumber(collateral).dividedBy("2")).toFixed()
+
+            await ethDaiVault.unlock(halfDebt, halfCollateral);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(halfDebt)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(halfCollateral)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - should burn UND and transfer LPT back to user after repaying half debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+
+            let halfDebt = (new BigNumber(debt).dividedBy("2")).toFixed()
+            let halfCollateral = (new BigNumber(collateral).dividedBy("2")).toFixed()
+
+            await ethDaiVault.unlock(halfDebt, halfCollateral);
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(halfDebt)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(halfCollateral)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(halfCollateral)).toFixed();
+
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+        })
+
+        it("unlock - should update everything properly after repaying 10% debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.1")).toFixed(0) // 10%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - should update everything properly after repaying 25% debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.25")).toFixed(0) // 25%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - should update everything properly after repaying 47% debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.47")).toFixed(0) // 47%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - should update everything properly after repaying 82% debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.82")).toFixed(0) // 82%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - should update everything properly after repaying 93% debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.93")).toFixed(0) // 93%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+        })
+
+        it("unlock - repaying all debt in two parts - first 35% and then 65%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.35")).toFixed(0) // 35%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - repaying all debt in two parts - first 12% and then 88%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.12")).toFixed(0) // 12%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - repaying all debt in two parts - first 28% and then 72%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.28")).toFixed(0) // 28%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - repaying all debt in two parts - first 53% and then 47%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.53")).toFixed(0) // 53%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - repaying all debt in two parts - first 82% and then 18%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.82")).toFixed(0) // 18%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("unlock - repaying all debt in two parts - first 92% and then 8%", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.92")).toFixed(0) // 8%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+            expect(burn).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debtToBePaid)
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debtToBePaid)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateralToBeReceived)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateralToBeReceived)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+
+            let secondHalfDebt = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+            let secondHalfCollateral = (new BigNumber(collateral).minus(collateralToBeReceived)).toFixed()
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(secondHalfDebt);
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal(secondHalfCollateral);
+
+            //Paying remaing all debt
+
+            let burn2 = await ethDaiVault.unlock(secondHalfDebt, secondHalfCollateral);
+
+            expect(burn2).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, secondHalfCollateral, secondHalfDebt)
+            expect(burn2).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, secondHalfDebt)
+
+            let userExpectedUNDBalFinal = (new BigNumber(userExpectedUNDBal).minus(secondHalfDebt)).toFixed();
+            let userExpectedLPTBalFinal = (new BigNumber(userExpectedLPTBal).plus(secondHalfCollateral)).toFixed();
+            let vaultExpectedLPTBalFinal = (new BigNumber(vaultExpectedLPTBal).minus(secondHalfCollateral)).toFixed();
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBalFinal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBalFinal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBalFinal);
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
 
     })
 
     
+    describe("#distributeFee", function() {
+
+        beforeEach(async function(){
+            let lockAmount = ethers.utils.parseEther("1").toString();
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        })
+        it("should distribute fees to correct address", async () => {
+            await ethDaiVault.changeSafuAddress(signers[1].address);
+            await ethDaiVault.changeTeamFeeAddress(signers[2].address);
+            await ethDaiVault.changeSafuShare(safuShare);
+
+            let balance = (await und.balanceOf(ethDaiVault.address)).toString();
+
+            let safuAmount = (new BigNumber(balance).multipliedBy(safuShare).dividedBy(secondBase)).toFixed()
+            let teamAmount = (new BigNumber(balance).minus(safuAmount)).toFixed()
+
+            let distribute = await ethDaiVault.distributeFee()
+
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, safuAmount);
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, teamAmount);
+
+        });
+    })
 });
 
 async function getOraclePriceForLPT(pair, stablecoin, feed){
