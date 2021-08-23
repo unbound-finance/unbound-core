@@ -122,17 +122,17 @@ contract UniswapV2Vault is UnboundVaultBase {
                     address(this)
                 );
                 yeildWallet[msg.sender] = wallet;
-            } else {
-                yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender]
-                    .add(_amount);
-                // transfer tokens to the vault
-                pair.transfer(yeildWallet[msg.sender], _amount);
-                // deposit to yeild
-                IUnboundYeildWallet(yeildWallet[msg.sender]).deposit(
-                    _farming,
-                    _amount
-                );
-            }
+            } 
+
+            yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender]
+                .add(_amount);
+            // transfer tokens to the vault
+            pair.transfer(yeildWallet[msg.sender], _amount);
+            // deposit to yeild
+            IUnboundYeildWallet(yeildWallet[msg.sender]).deposit(
+                _farming,
+                _amount
+            );
         }
 
         emit Lock(msg.sender, _amount, amount);
