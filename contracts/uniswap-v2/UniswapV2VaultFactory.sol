@@ -1,12 +1,14 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.0;
 
+import '@openzeppelin/contracts/security/Pausable.sol';
+
 import './UniswapV2Vault.sol';
 // libraries
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '../interfaces/IERC20.sol';
 
-contract UniswapV2VaultFactory {
+contract UniswapV2VaultFactory is Pausable {
     mapping(address => bool) public allowed;
     mapping(address => bool) public vaults;
 
@@ -55,7 +57,7 @@ contract UniswapV2VaultFactory {
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
         address _staking
-    ) external returns (address vault) {
+    ) external whenNotPaused returns (address vault) {
         vault = address(
             new UniswapV2Vault(
                 _uToken,
@@ -108,5 +110,19 @@ contract UniswapV2VaultFactory {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+    }
+
+     /**
+     * @notice Pause the mint and burn functionality
+     */
+    function setPause() external onlyGovernance {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the mint and burn functionality
+     */
+    function setUnpause() external onlyGovernance {
+        _unpause();
     }
 }

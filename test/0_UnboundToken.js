@@ -459,6 +459,85 @@ describe("UnboundToken", function() {
 
     })
 
+    describe("#setPause", async () => {
+        it("should revert is caller is not owner", async function() { 
+            await expect(und.connect(signers[1]).setPause()).to.be.revertedWith("NA");            
+        });
+        it("should pause contract", async function() { 
+            await und.setPause();            
+            expect(await und.paused()).to.equal(true);
+        });
+        it("should revert if lock LPT when contract is paused", async function() { 
+            await und.setPause();            
+
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+                .to.be.revertedWith("Pausable: paused");
+        });
+        it("should revert if unlock LPT when contract is paused", async function() { 
+
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            
+            await und.setPause();            
+
+            await expect(ethDaiVault.unlock("1", "1"))
+                .to.be.revertedWith("Pausable: paused");
+        });
+        
+    })
+
+    describe("#setUnpause", async () => {
+        it("should revert is caller is not owner", async function() { 
+            await expect(und.connect(signers[1]).setUnpause()).to.be.revertedWith("NA");            
+        });
+        it("should unpause contract", async function() { 
+            await und.setPause();            
+            expect(await und.paused()).to.equal(true);
+
+            await und.setUnpause();            
+            expect(await und.paused()).to.equal(false);
+        });
+        it("should revert if lock LPT when contract is paused and can lock once contract is unpaused", async function() { 
+            await und.setPause();            
+
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+                .to.be.revertedWith("Pausable: paused");
+
+            await und.setUnpause();         
+            
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+                .to.emit(und, "Transfer")
+
+        });
+        it("should revert if unlock LPT when contract is paused and ca unlock once contract is unpaused", async function() { 
+
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            
+            await und.setPause();            
+
+            await expect(ethDaiVault.unlock("1000", "1"))
+                .to.be.revertedWith("Pausable: paused");
+
+            await und.setUnpause();     
+
+            await expect(ethDaiVault.unlock("1000", "1"))
+                .to.emit(und, "Transfer")
+    
+        });
+    })
 
 
     
