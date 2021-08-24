@@ -8,7 +8,7 @@ import '../interfaces/IERC20.sol';
 
 contract UniswapV2VaultFactory {
     mapping(address => bool) public allowed;
-    mapping(address => bool) public vaults;
+    mapping(address => bool) public validVaults;
 
     address public governance;
     address public pendingGovernance;
@@ -70,7 +70,7 @@ contract UniswapV2VaultFactory {
         );
         index = index + 1;
         vaultByIndex[index] = vault;
-        vaults[vault] = true;
+        validVaults[vault] = true;
         emit NewVault(vault, index);
     }
 
@@ -79,7 +79,7 @@ contract UniswapV2VaultFactory {
      * @param _vault Address of the vault to enable
      */
     function enableVault(address _vault) external onlyGovernance {
-        require(vaults[_vault]);
+        require(validVaults[_vault]);
         allowed[_vault] = true;
         emit EnableVault(_vault);
     }
