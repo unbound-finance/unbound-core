@@ -39,7 +39,7 @@ const stakeFee = '500000' // 0.5%
 const safuShare = '40000000' // 40%
 const SECOND_BASE = '100000000' // 1e8
 
-describe('UnboundYeildWallet', function () {
+describe('UnboundYieldWallet', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
@@ -124,16 +124,16 @@ describe('UnboundYeildWallet', function () {
     ethDaiVault = await vaultFactory.vaultByIndex(1)
     ethDaiVault = await ethers.getContractAt('UniswapV2Vault', ethDaiVault)
 
-    let UnboundYeildWalletFactory = await ethers.getContractFactory(
-      'UnboundYeildWalletFactory'
+    let UnboundYieldWalletFactory = await ethers.getContractFactory(
+      'UnboundYieldWalletFactory'
     )
-    yieldWalletFactory = await UnboundYeildWalletFactory.deploy()
+    yieldWalletFactory = await UnboundYieldWalletFactory.deploy()
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYeildWalletFactory(yieldWalletFactory.address)
+    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
 
     await vaultFactory.enableVault(ethDaiVault.address)
     await und.addMinter(vaultFactory.address)
@@ -153,14 +153,14 @@ describe('UnboundYeildWallet', function () {
         0
       )
 
-      let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let UnboundYeildWallet = await ethers.getContractFactory(
-        'UnboundYeildWallet'
+      let UnboundYieldWallet = await ethers.getContractFactory(
+        'UnboundYieldWallet'
       )
       yieldwalletInstance = new ethers.Contract(
         wallet,
-        UnboundYeildWallet.interface.fragments,
+        UnboundYieldWallet.interface.fragments,
         signers[0]
       )
     })
@@ -189,14 +189,14 @@ describe('UnboundYeildWallet', function () {
         0
       )
 
-      let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let UnboundYeildWallet = await ethers.getContractFactory(
-        'UnboundYeildWallet'
+      let UnboundYieldWallet = await ethers.getContractFactory(
+        'UnboundYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        UnboundYeildWallet.interface.fragments,
+        UnboundYieldWallet.interface.fragments,
         signers[0]
       )
 
@@ -205,9 +205,9 @@ describe('UnboundYeildWallet', function () {
       ).to.be.revertedWith('NA')
     })
 
-    it('should increase yeildWalletDeposit amount on lock LPT', async function () {
+    it('should increase yieldWalletDeposit amount on lock LPT', async function () {
       expect(
-        await ethDaiVault.yeildWalletDeposit(signers[0].address)
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
 
       let lockAmount = ethers.utils.parseEther('1').toString()
@@ -220,7 +220,7 @@ describe('UnboundYeildWallet', function () {
       )
 
       expect(
-        await ethDaiVault.yeildWalletDeposit(signers[0].address)
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(lockAmount)
     })
 
@@ -234,7 +234,7 @@ describe('UnboundYeildWallet', function () {
         0
       )
 
-      let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
       let balanceBefore = (await ethDaiPair.balanceOf(wallet)).toString()
 
@@ -268,14 +268,14 @@ describe('UnboundYeildWallet', function () {
         0
       )
 
-      let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let UnboundYeildWallet = await ethers.getContractFactory(
-        'UnboundYeildWallet'
+      let UnboundYieldWallet = await ethers.getContractFactory(
+        'UnboundYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        UnboundYeildWallet.interface.fragments,
+        UnboundYieldWallet.interface.fragments,
         signers[0]
       )
 
@@ -288,9 +288,9 @@ describe('UnboundYeildWallet', function () {
     //     await ethDaiPair.approve(ethDaiVault.address, lockAmount);
     //     await ethDaiVault.lock(lockAmount, signers[0].address, yieldWalletFactory.address, 0);
 
-    //     let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+    //     let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-    //     expect(await ethDaiVault.yeildWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
+    //     expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
 
     //     let balanceBeforeUser = (await ethDaiPair.balanceOf(signers[0].address)).toString()
     //     let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
@@ -322,14 +322,14 @@ describe('UnboundYeildWallet', function () {
         0
       )
 
-      let wallet = await ethDaiVault.yeildWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let UnboundYeildWallet = await ethers.getContractFactory(
-        'UnboundYeildWallet'
+      let UnboundYieldWallet = await ethers.getContractFactory(
+        'UnboundYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        UnboundYeildWallet.interface.fragments,
+        UnboundYieldWallet.interface.fragments,
         signers[0]
       )
 

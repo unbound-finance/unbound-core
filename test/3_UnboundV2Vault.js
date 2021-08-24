@@ -120,7 +120,7 @@ describe("UniswapV2Vault", function() {
         await ethDaiVault.changeCR(CR)
         await ethDaiVault.changeFee(PROTOCOL_FEE);
         await ethDaiVault.changeStakeFee(stakeFee);
-        await ethDaiVault.enableYeildWalletFactory(zeroAddress);
+        await ethDaiVault.enableYieldWalletFactory(zeroAddress);
 
         await vaultFactory.enableVault(ethDaiVault.address);
         await und.addMinter(vaultFactory.address);
@@ -732,7 +732,7 @@ describe("UniswapV2Vault", function() {
 
         it("should revert if farming wallet is not valid", async function() { 
 
-            await ethDaiVault.disableYeildWalletFactory(zeroAddress);
+            await ethDaiVault.disableYieldWalletFactory(zeroAddress);
 
             let lockAmount = ethers.utils.parseEther("1").toString();
 

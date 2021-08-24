@@ -366,39 +366,39 @@ describe("UnboundVaultManager", function() {
         });
     })
 
-    describe("#enableYeildWalletFactory", function() {
+    describe("#enableYieldWalletFactory", function() {
         it("should revert if not called by governance", async function() { 
-            await expect(ethDaiVault.connect(signers[1]).enableYeildWalletFactory(signers[2].address))
+            await expect(ethDaiVault.connect(signers[1]).enableYieldWalletFactory(signers[2].address))
                 .to.be.revertedWith("NA");
         });
         it("should enable factory wallet address", async () => {
-            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
-            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(true);
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
         });
-        it("should emit enable yeild factory event", async function() { 
-            await expect(ethDaiVault.enableYeildWalletFactory(signers[2].address))
-                .to.emit(ethDaiVault, "EnableYeildFactory")
+        it("should emit enable yield factory event", async function() { 
+            await expect(ethDaiVault.enableYieldWalletFactory(signers[2].address))
+                .to.emit(ethDaiVault, "EnableYieldFactory")
                 .withArgs(signers[2].address);
         });
     })
 
-    describe("#disableYeildWalletFactory", function() {
+    describe("#disableYieldWalletFactory", function() {
         it("should revert if not called by governance", async function() { 
-            await expect(ethDaiVault.connect(signers[1]).disableYeildWalletFactory(signers[2].address))
+            await expect(ethDaiVault.connect(signers[1]).disableYieldWalletFactory(signers[2].address))
                 .to.be.revertedWith("NA");
         });
         it("should enable factory wallet address", async () => {
-            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
-            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(true);
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
 
-            await ethDaiVault.disableYeildWalletFactory(signers[2].address);
-            expect(await ethDaiVault.isValidYeildWalletFactory(signers[2].address)).to.equal(false);
+            await ethDaiVault.disableYieldWalletFactory(signers[2].address);
+            expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(false);
         });
-        it("should emit disable yeild factory event", async function() { 
-            await ethDaiVault.enableYeildWalletFactory(signers[2].address);
+        it("should emit disable yield factory event", async function() { 
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
 
-            await expect(ethDaiVault.disableYeildWalletFactory(signers[2].address))
-                .to.emit(ethDaiVault, "DisableYeildFactory")
+            await expect(ethDaiVault.disableYieldWalletFactory(signers[2].address))
+                .to.emit(ethDaiVault, "DisableYieldFactory")
                 .withArgs(signers[2].address);
         });
     })

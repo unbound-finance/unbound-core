@@ -6,13 +6,13 @@ import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '../libraries/UniswapV2PriceProvider.sol';
 
 //  import interfaces
-import '../interfaces/IUnboundYeildWallet.sol';
-import '../interfaces/IUnboundYeildWalletFactory.sol';
+import '../interfaces/IUnboundYieldWallet.sol';
+import '../interfaces/IUnboundYieldWalletFactory.sol';
 
 // contracts
 import '../base/UnboundVaultBase.sol';
 
-import '../UnboundYeildWallet.sol';
+import '../UnboundYieldWallet.sol';
 
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
@@ -104,7 +104,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         uint256 _minUTokenAmount
     ) external returns (uint256 amount) {
         // check if it's valid farming address
-        require(isValidYeildWalletFactory[_farming], 'IN');
+        require(isValidYieldWalletFactory[_farming], 'IN');
 
         // transfer tokens to the vault contract
         require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
@@ -112,25 +112,25 @@ contract UniswapV2Vault is UnboundVaultBase {
         // lock pool tokens and mint amount
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
 
-        // deploy to yeild wallet if required
+        // deploy to yield wallet if required
         if (_farming != address(0)) {
-            if (yeildWallet[msg.sender] == address(0)) {
+            if (yieldWallet[msg.sender] == address(0)) {
                 // create vault
-                address wallet = IUnboundYeildWalletFactory(_farming).create(
+                address wallet = IUnboundYieldWalletFactory(_farming).create(
                     address(pair),
                     msg.sender,
                     address(this)
                 );
-                yeildWallet[msg.sender] = wallet;
+                yieldWallet[msg.sender] = wallet;
             }
 
-            yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender].add(
+            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].add(
                 _amount
             );
             // transfer tokens to the vault
-            pair.transfer(yeildWallet[msg.sender], _amount);
-            // deposit to yeild
-            IUnboundYeildWallet(yeildWallet[msg.sender]).deposit(
+            pair.transfer(yieldWallet[msg.sender], _amount);
+            // deposit to yield
+            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
                 _farming,
                 _amount
             );
@@ -198,10 +198,10 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         burn(msg.sender, _uTokenAmount);
 
-        if (yeildWalletDeposit[msg.sender] > 0) {
-            // remove LP tokens from yeild wallet first
+        if (yieldWalletDeposit[msg.sender] > 0) {
+            // remove LP tokens from yield wallet first
             uint256 balanceBefore = pair.balanceOf(address(this));
-            IUnboundYeildWallet(yeildWallet[msg.sender]).withdraw(amount);
+            IUnboundYieldWallet(yieldWallet[msg.sender]).withdraw(amount);
             uint256 balanceAfter = pair.balanceOf(address(this));
 
             // transfer pool tokens back to the user

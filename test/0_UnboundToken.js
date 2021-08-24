@@ -103,7 +103,7 @@ describe("UnboundToken", function() {
         ethDaiVault = await ethers.getContractAt("UniswapV2Vault", ethDaiVault);
 
         await ethDaiVault.changeLTV(LTV)
-        await ethDaiVault.enableYeildWalletFactory(zeroAddress);
+        await ethDaiVault.enableYieldWalletFactory(zeroAddress);
         await vaultFactory.enableVault(ethDaiVault.address);
 
         await und.addMinter(vaultFactory.address);
