@@ -10,7 +10,7 @@ import '../interfaces/IChainlinkAggregatorV3Interface.sol';
 library UniswapV2PriceProvider {
     using SafeMath for uint256;
 
-    uint256 constant base = uint256(1e18);
+    uint256 constant BASE = uint256(1e18);
 
     // Returns square root using Babylon method
     function sqrt(uint256 y) internal pure returns (uint256 z) {
@@ -38,7 +38,7 @@ library UniswapV2PriceProvider {
     ) internal view returns (uint256) {
         uint256 totalValue = _reserve0.mul(_reserve1);
         return
-            sqrt(totalValue).mul(uint256(2)).mul(base).div(
+            sqrt(totalValue).mul(uint256(2)).mul(BASE).div(
                 getTotalSupplyAtWithdrawal(_pair)
             );
     }
@@ -54,7 +54,7 @@ library UniswapV2PriceProvider {
         uint256 _reserve1
     ) internal view returns (uint256) {
         uint256 totalValue = _reserve0.add(_reserve1);
-        return totalValue.mul(base).div(getTotalSupplyAtWithdrawal(_pair));
+        return totalValue.mul(BASE).div(getTotalSupplyAtWithdrawal(_pair));
     }
 
     /**
@@ -116,7 +116,9 @@ library UniswapV2PriceProvider {
         view
         returns (uint256)
     {
-        IChainlinkAggregatorV3Interface feed = IChainlinkAggregatorV3Interface(_feed);
+        IChainlinkAggregatorV3Interface feed = IChainlinkAggregatorV3Interface(
+            _feed
+        );
         (, int256 _price, , uint256 _updatedAt, ) = feed.latestRoundData();
         // check if the oracle is expired
         require(_updatedAt >= block.timestamp.sub(_allowedDelay), 'OLD');
@@ -136,7 +138,7 @@ library UniswapV2PriceProvider {
             uint256 price0 = getChainlinkPrice(_feeds[0], _allowedDelay);
             uint256 price1 = getChainlinkPrice(_feeds[1], _allowedDelay);
 
-            price = price0.mul(price1).div(base);
+            price = price0.mul(price1).div(BASE);
         } else {
             price = getChainlinkPrice(_feeds[0], _allowedDelay);
         }
@@ -154,7 +156,7 @@ library UniswapV2PriceProvider {
     ) internal pure returns (uint256) {
         require(_price > 0, 'ERR_NO_ORACLE_PRICE');
         uint256 reservePrice = normalise(_reserve, _decimals);
-        return uint256(reservePrice).mul(_price).div(base);
+        return uint256(reservePrice).mul(_price).div(BASE);
     }
 
     /**
@@ -167,12 +169,18 @@ library UniswapV2PriceProvider {
         uint256 _reserve1,
         uint256 _maxPercentDiff
     ) internal pure returns (bool result) {
-        uint256 diff = _reserve0.mul(base).div(_reserve1);
-        if (diff > (base.add(_maxPercentDiff)) || diff < (base.sub(_maxPercentDiff))) {
+        uint256 diff = _reserve0.mul(BASE).div(_reserve1);
+        if (
+            diff > (BASE.add(_maxPercentDiff)) ||
+            diff < (BASE.sub(_maxPercentDiff))
+        ) {
             return true;
         }
-        diff = _reserve1.mul(base).div(_reserve0);
-        if (diff > (base.add(_maxPercentDiff)) || diff < (base.sub(_maxPercentDiff))) {
+        diff = _reserve1.mul(BASE).div(_reserve0);
+        if (
+            diff > (BASE.add(_maxPercentDiff)) ||
+            diff < (BASE.sub(_maxPercentDiff))
+        ) {
             return true;
         }
         return false;
@@ -198,11 +206,11 @@ library UniswapV2PriceProvider {
         uint256 chainlinkPrice0;
         uint256 chainlinkPrice1;
         if (_isPeggedToUSD[0]) {
-            chainlinkPrice0 = base;
+            chainlinkPrice0 = BASE;
             chainlinkPrice1 = uint256(getLatestPrice(_feeds, _allowedDelay));
         } else {
             chainlinkPrice0 = uint256(getLatestPrice(_feeds, _allowedDelay));
-            chainlinkPrice1 = base;
+            chainlinkPrice1 = BASE;
         }
 
         //Get token reserves in ethers
@@ -239,7 +247,11 @@ library UniswapV2PriceProvider {
             //Calculate the arithmetic mean
             return
                 int256(
-                    getArithmeticMean(_pair, reserveInStablecoin0, reserveInStablecoin1)
+                    getArithmeticMean(
+                        _pair,
+                        reserveInStablecoin0,
+                        reserveInStablecoin1
+                    )
                 );
         }
     }

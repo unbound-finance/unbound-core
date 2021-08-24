@@ -122,10 +122,11 @@ contract UniswapV2Vault is UnboundVaultBase {
                     address(this)
                 );
                 yeildWallet[msg.sender] = wallet;
-            } 
+            }
 
-            yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender]
-                .add(_amount);
+            yeildWalletDeposit[msg.sender] = yeildWalletDeposit[msg.sender].add(
+                _amount
+            );
             // transfer tokens to the vault
             pair.transfer(yeildWallet[msg.sender], _amount);
             // deposit to yeild
@@ -163,9 +164,9 @@ contract UniswapV2Vault is UnboundVaultBase {
         );
 
         // get total value in base asset
-        uint256 value = _amount.mul(uint256(price)).div(base);
+        uint256 value = _amount.mul(uint256(price)).div(BASE);
 
-        amount = value.mul(LTV).div(secondBase);
+        amount = value.mul(LTV).div(SECOND_BASE);
 
         collateral[msg.sender] = collateral[msg.sender].add(_amount);
 
@@ -236,18 +237,18 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         uint256 currentCR = uint256(price)
             .mul(collateral[msg.sender])
-            .mul(secondBase)
+            .mul(SECOND_BASE)
             .div(debt[msg.sender]);
 
         // multiply by 1e24 to normalize it current CR (base for nomalization + 1e6 added in above step)
-        if (CR.mul(base.mul(secondBase)).div(secondBase) <= currentCR) {
+        if (CR.mul(BASE.mul(SECOND_BASE)).div(SECOND_BASE) <= currentCR) {
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(
                 debt[msg.sender]
             );
         } else {
             uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
             uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
-            uint256 valueAfter = (CR.mul(loanAfter).mul(secondBase)).div(base);
+            uint256 valueAfter = (CR.mul(loanAfter).mul(SECOND_BASE)).div(BASE);
             amount = valueStart.sub(valueAfter).div(uint256(price));
         }
     }

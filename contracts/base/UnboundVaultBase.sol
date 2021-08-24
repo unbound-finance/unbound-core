@@ -38,7 +38,7 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         // mint the protocol fee to Vault in form of uToken
         if (PROTOCOL_FEE > 0) {
-            fee = _amount.mul(PROTOCOL_FEE).div(secondBase);
+            fee = _amount.mul(PROTOCOL_FEE).div(SECOND_BASE);
             uToken.mint(address(this), fee);
         }
 
@@ -46,7 +46,7 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         // donate staking fee to the staking pool
         if (stakeFee > 0) {
-            fee = _amount.mul(stakeFee).div(secondBase);
+            fee = _amount.mul(stakeFee).div(SECOND_BASE);
             uToken.mint(staking, fee);
         }
 
@@ -62,8 +62,7 @@ contract UnboundVaultBase is UnboundVaultManager {
      * @param _account Address of the user to burn tokens from
      * @param _amount Amount to be burned
      */
-    function burn(address _account, uint256 _amount) internal
-    {
+    function burn(address _account, uint256 _amount) internal {
         uToken.burn(_account, _amount);
         debt[_account] = debt[_account].sub(_amount);
     }
