@@ -32,9 +32,7 @@ contract UnboundToken is ERC20, ERC20Permit {
     // check if the minter is valid
     modifier validMinter() {
         IUnboundVault vault = IUnboundVault(msg.sender);
-        // check if it's deployed from valid factory
         require(minters[address(vault.factory())], 'NA');
-        // check if the vault is allowed to mint UTokens
         require(
             IUnboundVaultFactory(address(vault.factory())).allowed(msg.sender),
             'NA'
@@ -81,7 +79,6 @@ contract UnboundToken is ERC20, ERC20Permit {
      * @param _minter Address of the minter
      */
     function enableMinter(address _minter) external onlyGovernance {
-        require(addTime[_minter] > 0);
         require(block.timestamp.sub(addTime[_minter]) >= 604800);
         minters[_minter] = true;
         emit EnableMinter(_minter);
