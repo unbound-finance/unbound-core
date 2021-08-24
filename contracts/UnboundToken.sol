@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.0;
 
+import '@openzeppelin/contracts/security/Pausable.sol';
+
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -10,7 +12,7 @@ import '@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol';
 import './interfaces/IUnboundVault.sol';
 import './interfaces/IUnboundVaultFactory.sol';
 
-contract UnboundToken is ERC20, ERC20Permit {
+contract UnboundToken is ERC20, ERC20Permit, Pausable {
     using SafeMath for uint256;
 
     address public governance;
@@ -52,7 +54,7 @@ contract UnboundToken is ERC20, ERC20Permit {
      * @param _account Address where tokens will be minted
      * @param _amount Amount of tokens to be minted
      */
-    function mint(address _account, uint256 _amount) external validMinter {
+    function mint(address _account, uint256 _amount) external whenNotPaused validMinter {
         _mint(_account, _amount);
     }
 
@@ -61,7 +63,7 @@ contract UnboundToken is ERC20, ERC20Permit {
      * @param _account Address to burn tokens from
      * @param _amount Amount of tokens to be burned
      */
-    function burn(address _account, uint256 _amount) external validMinter {
+    function burn(address _account, uint256 _amount) external whenNotPaused validMinter {
         _burn(_account, _amount);
     }
 
@@ -100,5 +102,19 @@ contract UnboundToken is ERC20, ERC20Permit {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+    }
+
+    /**
+     * @notice Pause the mint and burn functionality
+     */
+    function setPause() external onlyGovernance {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the mint and burn functionality
+     */
+    function setUnpause() external onlyGovernance {
+        _unpause();
     }
 }
