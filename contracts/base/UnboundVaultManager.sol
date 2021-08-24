@@ -25,7 +25,7 @@ contract UnboundVaultManager {
     IUniswapV2Pair public pair; // address of liquidity pool token
     IUnboundToken public uToken; // address of Unbound token to mint
 
-    mapping(address => bool) public isValidYeildWalletFactory; // Supported factories for yeildWallets
+    mapping(address => bool) public isValidYieldWalletFactory; // Supported factories for yieldWallets
 
     address public governance;
     address public manager;
@@ -56,8 +56,8 @@ contract UnboundVaultManager {
     event ChangeProtocolFee(uint256 _PROTOCOL_FEE);
     event ChangeSafuShare(uint256 _safuShare);
 
-    event EnableYeildFactory(address _factory);
-    event DisableYeildFactory(address _factory);
+    event EnableYieldFactory(address _factory);
+    event DisableYieldFactory(address _factory);
     event ClaimTokens(address _token, uint256 _amount);
 
     // checks if governance is calling
@@ -187,26 +187,26 @@ contract UnboundVaultManager {
     }
 
     /**
-     * @notice Enable yeildWallet
-     * @param _factory Address of the yeildWallet factory to enable
+     * @notice Enable yieldWallet
+     * @param _factory Address of the yieldWallet factory to enable
      */
-    function enableYeildWalletFactory(address _factory)
+    function enableYieldWalletFactory(address _factory)
         external
         onlyGovernance
     {
-        isValidYeildWalletFactory[_factory] = true;
-        emit EnableYeildFactory(_factory);
+        isValidYieldWalletFactory[_factory] = true;
+        emit EnableYieldFactory(_factory);
     }
 
     /**
-     * @notice Disable yeildWallet factory
-     * @param _factory Address of the yeildWallet factory to disable
+     * @notice Disable yieldWallet factory
+     * @param _factory Address of the yieldWallet factory to disable
      */
-    function disableYeildWalletFactory(address _factory)
+    function disableYieldWalletFactory(address _factory)
         external
         onlyGovernance
     {
-        isValidYeildWalletFactory[_factory] = false;
-        emit DisableYeildFactory(_factory);
+        isValidYieldWalletFactory[_factory] = false;
+        emit DisableYieldFactory(_factory);
     }
 }

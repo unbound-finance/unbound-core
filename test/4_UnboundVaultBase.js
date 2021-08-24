@@ -123,7 +123,7 @@ describe('UnboundVaultBase', function () {
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYeildWalletFactory(zeroAddress)
+    await ethDaiVault.enableYieldWalletFactory(zeroAddress)
 
     await vaultFactory.enableVault(ethDaiVault.address)
     await und.addMinter(vaultFactory.address)

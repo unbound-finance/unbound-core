@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.0;
 
-contract UnboundYeildWallet {
+contract UnboundYieldWallet {
     address public pair;
-    address public user; // owner of the yeildWallet
+    address public user; // owner of the yieldWallet
     address public vault; // factory from which this vault is deployed
 
     mapping(address => bool) allowed;

@@ -39,7 +39,7 @@ const stakeFee = '500000' // 0.5%
 const safuShare = '40000000' // 40%
 const SECOND_BASE = '100000000' // 1e8
 
-describe('UnboundYeildWalletFactory', function () {
+describe('UnboundYieldWalletFactory', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
@@ -124,16 +124,16 @@ describe('UnboundYeildWalletFactory', function () {
     ethDaiVault = await vaultFactory.vaultByIndex(1)
     ethDaiVault = await ethers.getContractAt('UniswapV2Vault', ethDaiVault)
 
-    let UnboundYeildWalletFactory = await ethers.getContractFactory(
-      'UnboundYeildWalletFactory'
+    let UnboundYieldWalletFactory = await ethers.getContractFactory(
+      'UnboundYieldWalletFactory'
     )
-    yieldWalletFactory = await UnboundYeildWalletFactory.deploy()
+    yieldWalletFactory = await UnboundYieldWalletFactory.deploy()
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYeildWalletFactory(yieldWalletFactory.address)
+    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
 
     await vaultFactory.enableVault(ethDaiVault.address)
     await und.addMinter(vaultFactory.address)
@@ -151,7 +151,7 @@ describe('UnboundYeildWalletFactory', function () {
     })
 
     it('should create new yield wallet for first time user locking LPT', async function () {
-      expect(await ethDaiVault.yeildWallet(signers[0].address)).to.be.equal(
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
 
@@ -166,7 +166,7 @@ describe('UnboundYeildWalletFactory', function () {
         0
       )
 
-      expect(await ethDaiVault.yeildWallet(signers[0].address)).to.not.equal(
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.not.equal(
         zeroAddress
       )
     })

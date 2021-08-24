@@ -18,8 +18,8 @@ contract UnboundVaultBase is UnboundVaultManager {
     mapping(address => uint256) public debt;
 
     // user vaults
-    mapping(address => address) public yeildWallet;
-    mapping(address => uint256) public yeildWalletDeposit;
+    mapping(address => address) public yieldWallet;
+    mapping(address => uint256) public yieldWalletDeposit;
 
     /**
      * @dev Mints uToken and updates loan values
