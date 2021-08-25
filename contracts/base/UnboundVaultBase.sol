@@ -36,7 +36,7 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         uint256 fee;
 
-        debt[_account] = debt[_account].add(amount);
+        debt[_account] = debt[_account].add(_amount);
 
         // mint the protocol fee to Vault in form of uToken
         if (PROTOCOL_FEE > 0) {
