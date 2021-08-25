@@ -259,7 +259,7 @@ describe('UnboundVaultBase', function () {
         lockAmount
       )
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        finalMintAmount
+        mintAmount
       )
     })
 
@@ -303,7 +303,7 @@ describe('UnboundVaultBase', function () {
       )
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        finalMintAmount
+        mintAmount
       )
 
       // locking for second time
@@ -317,8 +317,8 @@ describe('UnboundVaultBase', function () {
         finalMintAmount
       )
 
-      let finalDebt = new BigNumber(finalMintAmount)
-        .plus(finalMintAmount)
+      let finalDebt = new BigNumber(mintAmount)
+        .plus(mintAmount)
         .toFixed()
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt)
@@ -364,7 +364,7 @@ describe('UnboundVaultBase', function () {
       )
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        finalMintAmount
+        mintAmount
       )
 
       // locking for second time
@@ -402,8 +402,8 @@ describe('UnboundVaultBase', function () {
         finalMintAmount2
       )
 
-      let finalDebt = new BigNumber(finalMintAmount)
-        .plus(finalMintAmount2)
+      let finalDebt = new BigNumber(mintAmount)
+        .plus(mintAmount2)
         .toFixed()
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt)
@@ -415,6 +415,12 @@ describe('UnboundVaultBase', function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+
+      // Transfer some extra und to user 0 to repay all debts
+      await ethDaiPair.transfer(signers[1].address, lockAmount);
+      await ethDaiPair.connect(signers[1]).approve(ethDaiVault.address, lockAmount);
+      await ethDaiVault.connect(signers[1]).lock(lockAmount, signers[1].address, zeroAddress, "1");
+      await und.connect(signers[1]).transfer(signers[0].address, lockAmount);
     })
 
     it('unlock - should emit unlock and burn event after repaying all debt', async function () {

@@ -545,7 +545,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
         })
 
         it("should increase collateral and debt amount when locking for second time(same amount) without paying first debt", async function() { 
@@ -584,7 +584,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
 
             // locking for second time
 
@@ -605,7 +605,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v2, r2, s2)
 
             let finalCollateral = (new BigNumber(permitAmount).plus(permitAmount)).toFixed()
-            let finalDebt = (new BigNumber(finalMintAmount).plus(finalMintAmount)).toFixed()
+            let finalDebt = (new BigNumber(mintAmount).plus(mintAmount)).toFixed()
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(finalCollateral);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt);
@@ -648,7 +648,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
 
             // locking for second time
 
@@ -677,7 +677,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lockWithPermit(permitAmount2, signers[0].address, finalMintAmount2, expiration, v2, r2, s2)
 
             let finalCollateral = (new BigNumber(permitAmount).plus(permitAmount2)).toFixed()
-            let finalDebt = (new BigNumber(finalMintAmount).plus(finalMintAmount2)).toFixed()
+            let finalDebt = (new BigNumber(mintAmount).plus(mintAmount2)).toFixed()
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(finalCollateral);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt);
@@ -840,7 +840,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, finalMintAmount)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(lockAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
         })
 
         it("should increase collateral and debt amount when locking for second time(same amount) without paying first debt", async function() { 
@@ -861,7 +861,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, finalMintAmount)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(lockAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
 
             // locking for second time
 
@@ -870,7 +870,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, finalMintAmount)
 
             let finalCollateral = (new BigNumber(lockAmount).plus(lockAmount)).toFixed()
-            let finalDebt = (new BigNumber(finalMintAmount).plus(finalMintAmount)).toFixed()
+            let finalDebt = (new BigNumber(mintAmount).plus(mintAmount)).toFixed()
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(finalCollateral);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt);
@@ -895,7 +895,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, finalMintAmount)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(lockAmount);
-            expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalMintAmount);
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
 
             // locking for second time
 
@@ -913,7 +913,7 @@ describe("UniswapV2Vault", function() {
             await ethDaiVault.lock(lockAmount2, signers[0].address, zeroAddress, finalMintAmount2)
 
             let finalCollateral = (new BigNumber(lockAmount).plus(lockAmount2)).toFixed()
-            let finalDebt = (new BigNumber(finalMintAmount).plus(finalMintAmount2)).toFixed()
+            let finalDebt = (new BigNumber(mintAmount).plus(mintAmount2)).toFixed()
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(finalCollateral);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt);
@@ -928,6 +928,13 @@ describe("UniswapV2Vault", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+
+            // Transfer some extra und to user 0 to repay all debts
+            await ethDaiPair.transfer(signers[1].address, lockAmount);
+            await ethDaiPair.connect(signers[1]).approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.connect(signers[1]).lock(lockAmount, signers[1].address, zeroAddress, "1");
+            await und.connect(signers[1]).transfer(signers[0].address, lockAmount);
+
         })
 
         it("should revert if uTokenAmount burn amount is more then debt", async function() { 
