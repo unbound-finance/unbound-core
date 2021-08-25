@@ -34,11 +34,9 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
     // check if the minter is valid
     modifier validMinter() {
         IUnboundVault vault = IUnboundVault(msg.sender);
-        require(minters[address(vault.factory())], 'NA');
-        require(
-            IUnboundVaultFactory(address(vault.factory())).allowed(msg.sender),
-            'NA'
-        );
+        address factory = address(vault.factory());
+        require(minters[factory], 'NA');
+        require(IUnboundVaultFactory(factory).allowed(msg.sender), 'NA');
         _;
     }
 
@@ -54,7 +52,11 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
      * @param _account Address where tokens will be minted
      * @param _amount Amount of tokens to be minted
      */
-    function mint(address _account, uint256 _amount) external whenNotPaused validMinter {
+    function mint(address _account, uint256 _amount)
+        external
+        whenNotPaused
+        validMinter
+    {
         _mint(_account, _amount);
     }
 
@@ -63,7 +65,11 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
      * @param _account Address to burn tokens from
      * @param _amount Amount of tokens to be burned
      */
-    function burn(address _account, uint256 _amount) external whenNotPaused validMinter {
+    function burn(address _account, uint256 _amount)
+        external
+        whenNotPaused
+        validMinter
+    {
         _burn(_account, _amount);
     }
 
