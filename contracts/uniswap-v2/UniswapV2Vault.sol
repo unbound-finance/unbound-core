@@ -86,7 +86,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         // get approval using permit
         pair.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         // transfer tokens to vault contract
-        require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
+        require(pair.allowance(msg.sender, address(this)) == _amount, 'A');
         // lock pool tokens and mint uTokens
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
     }
@@ -105,9 +105,6 @@ contract UniswapV2Vault is UnboundVaultBase {
     ) external returns (uint256 amount) {
         // check if it's valid farming address
         require(isValidYieldWalletFactory[_farming], 'IN');
-
-        // transfer tokens to the vault contract
-        require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
 
         // lock pool tokens and mint amount
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
@@ -151,7 +148,10 @@ contract UniswapV2Vault is UnboundVaultBase {
         uint256 _minUTokenAmount
     ) internal returns (uint256 amount) {
         // check if user has sufficient balance
-        require(pair.balanceOf(msg.sender) > _amount, 'BAL');
+        require(pair.balanceOf(msg.sender) >= _amount, 'BAL');
+
+        // transfer tokens to the vault contract
+        require(pair.transferFrom(msg.sender, address(this), _amount), 'TF');
 
         // get price of pool token from oracle
         int256 price = UniswapV2PriceProvider.latestAnswer(
