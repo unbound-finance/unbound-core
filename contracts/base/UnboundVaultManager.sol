@@ -175,15 +175,23 @@ contract UnboundVaultManager {
      * @notice Distributes the fee collected to the contract
      */
     function distributeFee() external {
-        uint256 amount = IERC20(address(uToken)).balanceOf(address(this));
-        IERC20(address(uToken)).transfer(
-            safu,
-            amount.mul(safuShare).div(SECOND_BASE)
-        );
-        IERC20(address(uToken)).transfer(
-            team,
-            amount.sub(amount.mul(safuShare).div(SECOND_BASE))
-        );
+        // check if safu and team is initialized properly
+        require((safu != address(0)) && (safuShare > 0), 'INVALID');
+        uint256 amount = uToken.balanceOf(address(this));
+
+        if (team != address(0)) {
+            // transfer to safu
+            uToken.transfer(safu, amount.mul(safuShare).div(SECOND_BASE));
+
+            // transfer remaining to team
+            uToken.transfer(
+                team,
+                amount.sub(amount.mul(safuShare).div(SECOND_BASE))
+            );
+        } else {
+            // transfer the whole to safu
+            uToken.transfer(safu, amount.mul(safuShare).div(SECOND_BASE));
+        }
     }
 
     /**
