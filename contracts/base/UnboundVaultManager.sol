@@ -134,6 +134,7 @@ contract UnboundVaultManager {
      * @param _safuShare New fee. 1e8 is 100%
      */
     function changeSafuShare(uint256 _safuShare) external onlyGovernance {
+        require(_safuShare <= SECOND_BASE);
         safuShare = _safuShare;
         emit ChangeSafuShare(_safuShare);
     }
