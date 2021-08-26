@@ -284,11 +284,12 @@ contract UniswapV2Vault is UnboundVaultBase {
      */
     function emergencyUnlock() external {
         require(
-            IERC20(address(uToken)).balanceOf(msg.sender) == debt[msg.sender],
+            IERC20(address(uToken)).balanceOf(msg.sender) >= debt[msg.sender],
             'BAL'
         );
         uint256 userDebt = debt[msg.sender];
         uint256 userCollateral = collateral[msg.sender];
+        collateral[msg.sender] = 0; // prevent getting the same amount again
         burn(msg.sender, userDebt);
         pair.transfer(msg.sender, userCollateral);
         emit Unlock(msg.sender, userCollateral, userDebt);
