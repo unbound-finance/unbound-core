@@ -38,21 +38,21 @@ contract UnboundVaultBase is UnboundVaultManager {
 
         debt[_account] = debt[_account].add(_amount);
 
+        amount = _amount;
+
         // mint the protocol fee to Vault in form of uToken
         if (PROTOCOL_FEE > 0) {
             fee = _amount.mul(PROTOCOL_FEE).div(SECOND_BASE);
             uToken.mint(address(this), fee);
+            amount = amount.sub(fee);
         }
-
-        amount = _amount.sub(fee);
 
         // donate staking fee to the staking pool
         if (stakeFee > 0) {
             fee = _amount.mul(stakeFee).div(SECOND_BASE);
             uToken.mint(staking, fee);
+            amount = amount.sub(fee);
         }
-
-        amount = amount.sub(fee);
 
         uToken.mint(_mintTo, amount);
     }
