@@ -141,6 +141,7 @@ contract UnboundVaultManager {
      * @param _safu New safu fund address
      */
     function changeSafuAddress(address _safu) external onlyGovernance {
+        require(_safu != address(0));
         safu = _safu;
         emit ChangeSafu(_safu);
     }
