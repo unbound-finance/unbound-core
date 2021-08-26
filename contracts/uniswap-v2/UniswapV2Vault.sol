@@ -228,6 +228,10 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.transfer(msg.sender, balanceAfter.sub(balanceBefore));
 
             amount = balanceAfter.sub(balanceBefore);
+
+            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].sub(
+                amount
+            );
         } else {
             // give the pool tokens back
             pair.transfer(msg.sender, amount);
