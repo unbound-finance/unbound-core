@@ -114,6 +114,7 @@ contract UnboundVaultManager {
      * @param _fee New fee. 1e8 is 100%
      */
     function changeFee(uint256 _fee) external onlyGovernance {
+        require(_fee < SECOND_BASE);
         PROTOCOL_FEE = _fee;
         emit ChangeProtocolFee(_fee);
     }
@@ -123,6 +124,7 @@ contract UnboundVaultManager {
      * @param _stakeFee new stake fee
      */
     function changeStakeFee(uint256 _stakeFee) external onlyGovernance {
+        require(_stakeFee < SECOND_BASE);
         stakeFee = _stakeFee;
         emit ChangeStakeFee(_stakeFee);
     }
