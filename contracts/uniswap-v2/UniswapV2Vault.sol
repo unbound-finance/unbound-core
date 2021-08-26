@@ -226,6 +226,8 @@ contract UniswapV2Vault is UnboundVaultBase {
 
             // transfer pool tokens back to the user
             pair.transfer(msg.sender, balanceAfter.sub(balanceBefore));
+
+            amount = balanceAfter.sub(balanceBefore);
         } else {
             // give the pool tokens back
             pair.transfer(msg.sender, amount);
