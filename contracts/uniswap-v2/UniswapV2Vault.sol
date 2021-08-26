@@ -26,6 +26,17 @@ contract UniswapV2Vault is UnboundVaultBase {
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
 
+    /**
+     * @notice Creates new vault
+     * @param _uToken Address of the Unbound Token
+     * @param _governance Address of the governance
+     * @param _pair Address of the pool token
+     * @param _stablecoin Address of the stablecoin
+     * @param _feeds Array of the chainlink feeds to get weighed asset
+     * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
+     * @param _allowedDelay Allowed delay for Chainlink price update, in Epoch secondss
+     * @param _staking Address where the stake fees should be donated
+     */
     constructor(
         address _uToken,
         address _governance,
@@ -36,6 +47,15 @@ contract UniswapV2Vault is UnboundVaultBase {
         uint256 _allowedDelay,
         address _staking
     ) {
+        require(
+            _uToken != address(0) &&
+                _pair != address(0) &&
+                _stablecoin != address(0),
+            'I'
+        );
+
+        require(_feeds.length <= 2, 'IF');
+
         uToken = IUnboundToken(_uToken);
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
