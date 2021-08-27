@@ -39,6 +39,11 @@ const stakeFee = '500000' // 0.5%
 const safuShare = '40000000' // 40%
 const SECOND_BASE = '100000000' // 1e8
 
+let accountsPkey = [
+  "0x9d297c3cdf8af0abffbf00db443d56a62798d1d562ae19a668ac73eb9052f631",
+  "0xbb4a887e10689e6b2574760c2965a3cfc6013062b2d9f71bb6ce5cf08546e61a"
+]
+
 describe('UnboundYieldWallet', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
@@ -205,7 +210,7 @@ describe('UnboundYieldWallet', function () {
       ).to.be.revertedWith('NA')
     })
 
-    it('should increase yieldWalletDeposit amount on lock LPT', async function () {
+    it('lock - should increase yieldWalletDeposit amount on lock LPT', async function () {
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
@@ -224,7 +229,7 @@ describe('UnboundYieldWallet', function () {
       ).to.be.equal(lockAmount)
     })
 
-    it('should transfer LPT to yield wallet on lock LPT', async function () {
+    it('lock - should transfer LPT to yield wallet on lock LPT', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -249,6 +254,75 @@ describe('UnboundYieldWallet', function () {
 
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(lockAmount2)
+        .toString()
+
+      expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceAfter)
+    })
+
+    it('lockWithPermit - should increase yieldWalletDeposit amount on lock LPT', async function () {
+      expect(
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
+      ).to.be.equal('0')
+
+      const { chainId } = await ethers.provider.getNetwork()
+
+      const expiration = MAX_UINT_AMOUNT;
+      const nonce = (await ethDaiPair.nonces(signers[0].address)).toString();
+      const permitAmount = ethers.utils.parseEther("1").toString();
+  
+      const msgParams = buildPermitParams(
+          chainId,
+          ethDaiPair.address,
+          signers[0].address,
+          ethDaiVault.address,
+          nonce,
+          permitAmount,
+          expiration.toString()
+      );
+      const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
+
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+
+      expect(
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
+      ).to.be.equal(permitAmount)
+    })
+
+    it('lockWithPermit - should transfer LPT to yield wallet on lock LPT', async function () {
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(
+        lockAmount,
+        signers[0].address,
+        yieldWalletFactory.address,
+        0
+      )
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let balanceBefore = (await ethDaiPair.balanceOf(wallet)).toString()
+
+      const { chainId } = await ethers.provider.getNetwork()
+
+      const expiration = MAX_UINT_AMOUNT;
+      const nonce = (await ethDaiPair.nonces(signers[0].address)).toString();
+      const permitAmount = ethers.utils.parseEther("1").toString();
+  
+      const msgParams = buildPermitParams(
+          chainId,
+          ethDaiPair.address,
+          signers[0].address,
+          ethDaiVault.address,
+          nonce,
+          permitAmount,
+          expiration.toString()
+      );
+      const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
+
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+
+      let balanceAfter = new BigNumber(balanceBefore)
+        .plus(permitAmount)
         .toString()
 
       expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceAfter)

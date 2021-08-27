@@ -88,6 +88,7 @@ contract UniswapV2Vault is UnboundVaultBase {
      * @notice Lock pool token with the permit signature
      * @param _amount Amount of pool tokens to lock
      * @param _mintTo Address to which the UND should be minted
+     * @param _farming Farming address
      * @param _minUTokenAmount Minimium amount of uTokens to receive
      * @param _deadline Deadline of the permit signature
      * @param _v V part of the signature
@@ -97,24 +98,57 @@ contract UniswapV2Vault is UnboundVaultBase {
     function lockWithPermit(
         uint256 _amount,
         address _mintTo,
+        address _farming,
         uint256 _minUTokenAmount,
         uint256 _deadline,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external returns (uint256 amount) {
+        // check if it's valid farming address
+        require(isValidYieldWalletFactory[_farming], 'IN');
+
         // get approval using permit
         pair.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
+
         // transfer tokens to vault contract
         require(pair.allowance(msg.sender, address(this)) == _amount, 'A');
+
         // lock pool tokens and mint uTokens
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
+
+        // deploy to yield wallet if required
+        if (_farming != address(0)) {
+            if (yieldWallet[msg.sender] == address(0)) {
+                // create vault
+                address wallet = IUnboundYieldWalletFactory(_farming).create(
+                    address(pair),
+                    msg.sender,
+                    address(this)
+                );
+                yieldWallet[msg.sender] = wallet;
+            }
+
+            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].add(
+                _amount
+            );
+            // transfer tokens to the vault
+            pair.transfer(yieldWallet[msg.sender], _amount);
+            // deposit to yield
+            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
+                _farming,
+                _amount
+            );
+        }
+
+        emit Lock(msg.sender, _amount, amount);
     }
 
     /**
      * @notice Lock pool tokens without permit
      * @param _amount Amount of pool tokens to lock
      * @param _mintTo Address to which the UND should be minted
+     * @param _farming Farming address
      * @param _minUTokenAmount Minimum uTokens to receive
      */
     function lock(
