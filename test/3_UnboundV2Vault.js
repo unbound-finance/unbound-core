@@ -1573,6 +1573,72 @@ describe("UniswapV2Vault", function() {
 
     })
 
+    describe("#emergencyUnlock", async () => {
+
+        beforeEach(async function(){
+            let lockAmount = ethers.utils.parseEther("1").toString();
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+
+            // Transfer some extra und to user 0 to repay all debts
+            await ethDaiPair.transfer(signers[1].address, lockAmount);
+            await ethDaiPair.connect(signers[1]).approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.connect(signers[1]).lock(lockAmount, signers[1].address, zeroAddress, "1");
+            await und.connect(signers[1]).transfer(signers[0].address, lockAmount);
+
+        })
+
+        it("should revert if user balance if less then debt", async () => {
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await und.transfer(signers[1].address, lockAmount);
+
+            await expect(ethDaiVault.emergencyUnlock()).to.be.revertedWith("BAL");
+        })
+
+        it("should set debt and collateral to 0 if paid all debt", async () => {
+            expect(await ethDaiVault.debt(signers[0].address)).to.not.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.not.equal("0");
+
+            await ethDaiVault.emergencyUnlock();
+
+            expect(await ethDaiVault.debt(signers[0].address)).to.equal("0");
+            expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
+        })
+
+        it("should emit unlock and burn event after repaying all debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let tx = await ethDaiVault.emergencyUnlock();
+
+            expect(tx).to.emit(ethDaiVault, "Unlock").withArgs(signers[0].address, collateral, debt)
+
+            expect(tx).to.emit(und, "Transfer").withArgs(signers[0].address, zeroAddress, debt)
+        })
+
+        it("unlock - should burn UND and transfer LPT back to user after repaying all debt", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let undBalanceBeforeU = (await und.balanceOf(signers[0].address)).toString()
+            let lptBalanceBeforeU = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+
+            let lptBalanceBeforeV = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+
+            await ethDaiVault.emergencyUnlock();
+
+            let userExpectedUNDBal = (new BigNumber(undBalanceBeforeU).minus(debt)).toFixed();
+            let userExpectedLPTBal = (new BigNumber(lptBalanceBeforeU).plus(collateral)).toFixed();
+            let vaultExpectedLPTBal = (new BigNumber(lptBalanceBeforeV).minus(collateral)).toFixed();
+
+
+            expect(await und.balanceOf(signers[0].address)).to.equal(userExpectedUNDBal);
+            expect(await ethDaiPair.balanceOf(signers[0].address)).to.equal(userExpectedLPTBal);
+            expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.equal(vaultExpectedLPTBal);
+        })
+    })
+
     
     describe("#distributeFee", function() {
 
