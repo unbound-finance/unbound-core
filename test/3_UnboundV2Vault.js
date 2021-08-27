@@ -194,6 +194,59 @@ describe("UniswapV2Vault", function() {
         it("should set the factory address correctly", async function() { 
             expect(await ethDaiVault.factory()).to.equal(vaultFactory.address);
         });
+        it("should revert if utoken address is zero while creating vault", async function() { 
+            await expect(
+                vaultFactory.createVault(
+                    zeroAddress,
+                    signers[0].address,
+                    ethDaiPair.address,
+                    tDai.address,
+                    [feedEthUsd.address],
+                    "900000000000000000", // 10%
+                    5000,
+                    undDaiPair
+            )).to.be.revertedWith("I");
+        });
+        it("should revert if pair address is zero while creating vault", async function() { 
+            await expect(
+                vaultFactory.createVault(
+                    und.address,
+                    signers[0].address,
+                    zeroAddress,
+                    tDai.address,
+                    [feedEthUsd.address],
+                    "900000000000000000", // 10%
+                    5000,
+                    undDaiPair
+            )).to.be.revertedWith("I");
+        });
+        it("should revert if stablecoin address is zero while creating vault", async function() { 
+            await expect(
+                vaultFactory.createVault(
+                    und.address,
+                    signers[0].address,
+                    ethDaiPair.address,
+                    zeroAddress,
+                    [feedEthUsd.address],
+                    "900000000000000000", // 10%
+                    5000,
+                    undDaiPair
+            )).to.be.revertedWith("I");
+        });
+
+        it("should revert if feeds length is more then 2", async function() { 
+            await expect(
+                vaultFactory.createVault(
+                    und.address,
+                    signers[0].address,
+                    ethDaiPair.address,
+                    tDai.address,
+                    [feedEthUsd.address, feedEthUsd.address, feedEthUsd.address],
+                    "900000000000000000", // 10%
+                    5000,
+                    undDaiPair
+            )).to.be.revertedWith("IF");
+        });
     });
 
     describe("#lockWithPermit", async () => {
@@ -1528,6 +1581,22 @@ describe("UniswapV2Vault", function() {
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
         })
+
+        it("should revert if safu address is not initialized", async () => {
+            await ethDaiVault.changeTeamFeeAddress(signers[2].address);
+            await ethDaiVault.changeSafuShare(safuShare);
+
+            await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
+
+        });
+
+        it("should revert if safu share is zero", async () => {
+            await ethDaiVault.changeSafuAddress(signers[1].address);
+            await ethDaiVault.changeTeamFeeAddress(signers[2].address);
+
+            await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
+
+        });
         it("should distribute fees to correct address", async () => {
             await ethDaiVault.changeSafuAddress(signers[1].address);
             await ethDaiVault.changeTeamFeeAddress(signers[2].address);
@@ -1542,6 +1611,21 @@ describe("UniswapV2Vault", function() {
 
             expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, safuAmount);
             expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, teamAmount);
+
+        });
+        it("should distribute fees to only safu address if team address is zero address", async () => {
+            await ethDaiVault.changeSafuAddress(signers[1].address);
+            await ethDaiVault.changeSafuShare(safuShare);
+
+            let balance = (await und.balanceOf(ethDaiVault.address)).toString();
+
+            let safuAmount = (new BigNumber(balance).multipliedBy(safuShare).dividedBy(secondBase)).toFixed()
+            let remainingAmount = (new BigNumber(balance).minus(safuAmount)).toFixed()
+
+            let distribute = await ethDaiVault.distributeFee()
+
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, safuAmount);
+            expect(await und.balanceOf(ethDaiVault.address)).to.be.equal(remainingAmount);
 
         });
     })
