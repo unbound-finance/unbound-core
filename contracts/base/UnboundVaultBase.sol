@@ -14,6 +14,8 @@ import '../base/UnboundVaultManager.sol';
 contract UnboundVaultBase is UnboundVaultManager {
     using SafeMath for uint256;
 
+    uint256 public uTokenMinted;
+
     mapping(address => uint256) public collateral;
     mapping(address => uint256) public debt;
 
@@ -33,6 +35,13 @@ contract UnboundVaultBase is UnboundVaultManager {
         address _mintTo
     ) internal returns (uint256 amount) {
         require(_mintTo != address(0), 'NO');
+        
+        uTokenMinted = uTokenMinted.add(_amount);
+
+        // Validate uToken minting limit if it is not set to zero
+        if(uTokenMintLimit > 0){
+            require(uTokenMinted <= uTokenMintLimit, 'LE');
+        }
 
         uint256 fee;
 

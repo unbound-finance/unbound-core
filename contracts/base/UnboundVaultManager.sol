@@ -31,6 +31,8 @@ contract UnboundVaultManager {
     address public manager;
     address public pendingGovernance;
 
+    uint256 public uTokenMintLimit; // Total UND token mint limit for vault. If set to 0 then vault can mint unlimited UND
+
     uint256 public LTV; // Loan to Value (LTV) rate, 1e8 is 100%
     uint256 public CR; // Collatralization Ratio, 1e8 is 100%
 
@@ -46,6 +48,8 @@ contract UnboundVaultManager {
     // events
     event ChangeGovernance(address _governance);
     event ChangeManager(address _manager);
+
+    event ChangeUTokenMintLimit(uint256 _uTokenMintLimit);
 
     event ChangeLTV(uint256 _LTV);
     event ChangeCR(uint256 _CR);
@@ -80,6 +84,15 @@ contract UnboundVaultManager {
     function claim(address _token, address _to) external onlyGovernance {
         require(address(pair) != _token && address(uToken) != _token);
         IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Changes uToken mint limit
+     * @param _uTokenMintLimit maximum uToken amount that can be minted. Set to 0 if limit is unlimited.
+     */
+    function changeUTokenMintLimit(uint256 _uTokenMintLimit) external onlyGovernance {
+        uTokenMintLimit = _uTokenMintLimit;
+        emit ChangeUTokenMintLimit(uTokenMintLimit);
     }
 
     /**

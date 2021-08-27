@@ -273,6 +273,22 @@ describe("UnboundVaultManager", function() {
 
     })
 
+    describe("#changeUTokenMintLimit", function() {
+        it("should revert if not called by governance", async function() { 
+            await expect(ethDaiVault.connect(signers[1]).changeUTokenMintLimit("100"))
+                .to.be.revertedWith("NA");
+        });
+        it("should change uToken mint limit", async () => {
+            await ethDaiVault.changeUTokenMintLimit("100");
+            expect(await ethDaiVault.uTokenMintLimit()).to.equal("100");
+        });
+        it("should emit change uToken mint limit event", async function() { 
+            await expect(ethDaiVault.changeUTokenMintLimit("100"))
+                .to.emit(ethDaiVault, "ChangeUTokenMintLimit")
+                .withArgs("100");
+        });
+    })
+
     describe("#changeTeamFeeAddress", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).changeTeamFeeAddress(signers[1].address))
@@ -293,7 +309,7 @@ describe("UnboundVaultManager", function() {
             await expect(ethDaiVault.changeFee(secondBase))
                 .to.be.reverted;
         });
-        it("should set pending governance as new governance address", async () => {
+        it("should change protocol fees", async () => {
             await ethDaiVault.changeFee(PROTOCOL_FEE);
             expect(await ethDaiVault.PROTOCOL_FEE()).to.equal(PROTOCOL_FEE);
         });
