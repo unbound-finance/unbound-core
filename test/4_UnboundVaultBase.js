@@ -154,6 +154,19 @@ describe('UnboundVaultBase', function () {
       ).to.be.revertedWith('NA')
     })
 
+    it('should revert if uToken mint limit is reached', async function () {
+
+      await ethDaiVault.changeUTokenMintLimit("1");
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await expect(
+        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      ).to.be.revertedWith('LE')
+    })
+
     it('lock 1 LP - should mint correct amount of UND to user account, staking adress & vault contract', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
