@@ -25,6 +25,7 @@ const LTV = "50000000" // 50%
 const PROTOCOL_FEE = "500000" // 0.5%
 const stakeFee = "500000" // 0.5% 
 const safuShare = "40000000" // 40%
+const secondBase = "100000000"; // 1e8
 
 describe("UnboundVaultManager", function() {
 
@@ -288,6 +289,10 @@ describe("UnboundVaultManager", function() {
             await expect(ethDaiVault.connect(signers[1]).changeFee(PROTOCOL_FEE))
                 .to.be.revertedWith("NA");
         });
+        it("should revert if fee is greater then or equal to SECOND_BASE", async function() { 
+            await expect(ethDaiVault.changeFee(secondBase))
+                .to.be.reverted;
+        });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeFee(PROTOCOL_FEE);
             expect(await ethDaiVault.PROTOCOL_FEE()).to.equal(PROTOCOL_FEE);
@@ -303,6 +308,10 @@ describe("UnboundVaultManager", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).changeStakeFee(stakeFee))
                 .to.be.revertedWith("NA");
+        });
+        it("should revert if fee is greater then or equal to SECOND_BASE", async function() { 
+            await expect(ethDaiVault.changeStakeFee(secondBase))
+                .to.be.reverted;
         });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeStakeFee(stakeFee);
@@ -320,6 +329,10 @@ describe("UnboundVaultManager", function() {
             await expect(ethDaiVault.connect(signers[1]).changeSafuShare(safuShare))
                 .to.be.revertedWith("NA");
         });
+        it("should revert if safu share is greater then SECOND_BASE", async function() { 
+            await expect(ethDaiVault.changeSafuShare("100000001"))
+                .to.be.reverted;
+        });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeSafuShare(safuShare);
             expect(await ethDaiVault.safuShare()).to.equal(safuShare);
@@ -335,6 +348,10 @@ describe("UnboundVaultManager", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).changeSafuAddress(signers[2].address))
                 .to.be.revertedWith("NA");
+        });
+        it("should revert if address is zero address", async function() { 
+            await expect(ethDaiVault.changeSafuAddress(zeroAddress))
+                .to.be.reverted;
         });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeSafuAddress(signers[2].address);
