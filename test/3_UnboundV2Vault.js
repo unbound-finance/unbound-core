@@ -273,7 +273,7 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(permitAmount, signers[0].address, "100", expiration, v, r, s)
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, "100", expiration, v, r, s)
             ).to.be.revertedWith("UniswapV2: EXPIRED");
         });
 
@@ -300,7 +300,7 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(dummyPermitAmount, signers[0].address, "100", expiration, v, r, s)
+                .lockWithPermit(dummyPermitAmount, signers[0].address, zeroAddress, "100", expiration, v, r, s)
             ).to.be.revertedWith("UniswapV2: INVALID_SIGNATURE");
         });
 
@@ -328,7 +328,7 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, "1", expiration, v, r, s)
             ).to.be.reverted;
         });
 
@@ -354,7 +354,7 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(permitAmount, zeroAddress, "1", expiration, v, r, s)
+                .lockWithPermit(permitAmount, zeroAddress, zeroAddress, "1", expiration, v, r, s)
             ).to.be.revertedWith("NO");
         });
 
@@ -381,8 +381,35 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, "1", expiration, v, r, s)
             ).to.be.revertedWith("NA");
+        });
+
+        it("should revert farming address is not valid", async function() { 
+            await ethDaiVault.disableYieldWalletFactory(zeroAddress);
+
+            const { chainId } = await ethers.provider.getNetwork()
+
+            const expiration = MAX_UINT_AMOUNT;
+            const nonce = (await ethDaiPair.nonces(signers[0].address)).toString();
+            const permitAmount = ethers.utils.parseEther("1").toString();
+        
+            const msgParams = buildPermitParams(
+                chainId,
+                ethDaiPair.address,
+                signers[0].address,
+                ethDaiVault.address,
+                nonce,
+                permitAmount,
+                expiration.toString()
+            );
+            const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
+
+            await expect(
+                ethDaiVault
+                .connect(signers[0])
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, "1", expiration, v, r, s)
+            ).to.be.revertedWith("IN");
         });
 
         it("should revert if minUTokenAmount is more then minted UND", async function() { 
@@ -419,7 +446,7 @@ describe("UniswapV2Vault", function() {
             await expect(
                 ethDaiVault
                 .connect(signers[0])
-                .lockWithPermit(permitAmount, signers[0].address, minUTokenAmount, expiration, v, r, s)
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, minUTokenAmount, expiration, v, r, s)
             ).to.be.revertedWith("MIN");
 
         })
@@ -457,8 +484,10 @@ describe("UniswapV2Vault", function() {
             let stakeFees = (new BigNumber(mintAmount).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
-            let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
+            let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s)
                     
+            expect(lock).to.emit(ethDaiVault, "Lock").withArgs(signers[0].address, permitAmount, finalMintAmount);
+
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, ethDaiVault.address, protocolFee);
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, undDaiPair, stakeFees);
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, signers[0].address, finalMintAmount);
@@ -507,7 +536,7 @@ describe("UniswapV2Vault", function() {
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
             await expect(ethDaiVault
-                .lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s))
+                .lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s))
                 .to.emit(ethDaiPair, "Transfer").withArgs(signers[0].address, ethDaiVault.address, permitAmount) 
             
             let userBalanceAfterExpected = (new BigNumber(userBalanceBefore).minus(permitAmount)).toFixed()
@@ -551,8 +580,10 @@ describe("UniswapV2Vault", function() {
             let stakeFees = (new BigNumber(mintAmount).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
-            let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
+            let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s)
                     
+            expect(lock).to.emit(ethDaiVault, "Lock").withArgs(signers[0].address, permitAmount, finalMintAmount);
+
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, ethDaiVault.address, protocolFee);
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, undDaiPair, stakeFees);
             expect(lock).to.emit(und, "Transfer").withArgs(zeroAddress, signers[0].address, finalMintAmount);
@@ -595,7 +626,7 @@ describe("UniswapV2Vault", function() {
             let stakeFees = (new BigNumber(mintAmount).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
-            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
+            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
@@ -634,7 +665,7 @@ describe("UniswapV2Vault", function() {
             let stakeFees = (new BigNumber(mintAmount).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
-            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
+            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
@@ -655,7 +686,7 @@ describe("UniswapV2Vault", function() {
 
             const { v: v2, r: r2, s: s2 } = getSignatureFromTypedData(accountsPkey[0], msgParams2);
 
-            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v2, r2, s2)
+            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v2, r2, s2)
 
             let finalCollateral = (new BigNumber(permitAmount).plus(permitAmount)).toFixed()
             let finalDebt = (new BigNumber(mintAmount).plus(mintAmount)).toFixed()
@@ -698,7 +729,7 @@ describe("UniswapV2Vault", function() {
             let stakeFees = (new BigNumber(mintAmount).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount = (new BigNumber(mintAmount).minus(protocolFee).minus(stakeFees)).toFixed()
 
-            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, finalMintAmount, expiration, v, r, s)
+            await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, zeroAddress, finalMintAmount, expiration, v, r, s)
 
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal(permitAmount);
             expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount);
@@ -727,7 +758,7 @@ describe("UniswapV2Vault", function() {
             let stakeFees2 = (new BigNumber(mintAmount2).multipliedBy(stakeFee).dividedBy(secondBase)).toFixed();
             let finalMintAmount2 = (new BigNumber(mintAmount2).minus(protocolFee2).minus(stakeFees2)).toFixed()
 
-            await ethDaiVault.lockWithPermit(permitAmount2, signers[0].address, finalMintAmount2, expiration, v2, r2, s2)
+            await ethDaiVault.lockWithPermit(permitAmount2, signers[0].address, zeroAddress, finalMintAmount2, expiration, v2, r2, s2)
 
             let finalCollateral = (new BigNumber(permitAmount).plus(permitAmount2)).toFixed()
             let finalDebt = (new BigNumber(mintAmount).plus(mintAmount2)).toFixed()
