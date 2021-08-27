@@ -282,6 +282,10 @@ describe('UnboundYieldWallet', function () {
       await expect(yieldwallet.withdraw(lockAmount)).to.be.revertedWith('NA')
     })
 
+    // it('should decrese yieldWalletDeposit amount on unlock LPT', async function () {
+    //  //Can be validated once logic for withdraw function is written
+    // })
+
     // it("should transfer LPT back to user from yield wallet on unlock LPT", async function() {
 
     //     let lockAmount = ethers.utils.parseEther("1").toString();

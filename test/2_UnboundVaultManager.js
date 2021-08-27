@@ -348,6 +348,25 @@ describe("UnboundVaultManager", function() {
     })
 
     describe("#distributeFee", function() {
+
+        it("should revert if safu share is zero", async () => {
+            // Change team address
+            await ethDaiVault.changeTeamFeeAddress(signers[1].address);
+
+            // Chnage Safu address
+            await ethDaiVault.changeSafuAddress(signers[2].address);
+
+            await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
+
+        });
+
+        it("should revert if safu address is not initialized", async () => {
+            // Change team address
+            await ethDaiVault.changeTeamFeeAddress(signers[1].address);
+
+            await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
+
+        });
         it("should distribute fees to correct address", async () => {
             // Transfer UND to vault
             // await und.transfer(ethDaiVault.address, "1000");
@@ -357,6 +376,9 @@ describe("UnboundVaultManager", function() {
 
             // Chnage Safu address
             await ethDaiVault.changeSafuAddress(signers[2].address);
+
+            // Change safu share
+            await ethDaiVault.changeSafuShare(safuShare);
 
             let distribute = await ethDaiVault.distributeFee()
 
