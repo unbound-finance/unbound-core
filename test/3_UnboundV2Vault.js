@@ -1602,6 +1602,193 @@ describe("UniswapV2Vault", function() {
             expect(await ethDaiVault.collateral(signers[0].address)).to.equal("0");
         })
 
+        it("unlock - verify getTokenreturn - insufficient collateral", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("200000000000") //$2000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $91.92
+
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+            // console.log(currentCr.toFixed())
+
+            expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.9")).toFixed(0) // 90%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+        })
+
+        it("unlock - verify getTokenreturn - insufficient collateral", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("200000000000") //$2000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $91.92         
+            
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+
+            expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.5")).toFixed(0) // 50%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+        })
+
+        it("unlock - verify getTokenreturn - insufficient collateral - check remaining debt & collateral value", async function() { 
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("200000000000") //$2000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $91.92         
+            
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+            console.log("current cr: " + currentCr.toFixed())
+
+            expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.5")).toFixed(0) // 30%
+            let collateralToBeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed() // 10%
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived);
+
+            console.log("debt before: " + debt)
+            console.log("collateral before: " + collateral)
+
+            console.log("debt to be paid: " + debtToBePaid)
+            console.log("collateral to be received: " + collateralToBeReceived)
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+
+            let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateralAfter = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let remainingcollateralValueUSD = new BigNumber(collateralAfter).multipliedBy(lptprice).dividedBy(BASE)
+            let requiredDebt = new BigNumber(debtAfter).multipliedBy(CR).dividedBy(secondBase)
+
+            console.log("debt After: " + debtAfter)
+            console.log("collateral After: " + collateralAfter)
+            console.log("remaining debt value usd: "+ requiredDebt.toFixed())
+            console.log("remaining collateral value usd: "+ remainingcollateralValueUSD.toFixed())
+
+            expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(false, "Invalid remaining collateral value")
+
+        })
+
+        it("unlock - verify getTokenreturn - sufficient collateral", async function() { 
+
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("400000000000") //$4000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $127.2792
+
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+
+            expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
+            
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.5")).toFixed(0) // 50%
+
+            let totalCollateralvalueInUSd = new BigNumber(lptprice).multipliedBy(collateral).dividedBy(BASE)
+            let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
+            let collateralVaultAfter = remainingDebt.multipliedBy(CR).dividedBy(secondBase)
+            let collateralTobeReceived = (totalCollateralvalueInUSd.minus(collateralVaultAfter).multipliedBy(BASE).dividedBy(lptprice)).toFixed();
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralTobeReceived, debtToBePaid)
+
+        })
+
+        it("unlock - verify getTokenreturn - sufficient collateral", async function() { 
+
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("400000000000") //$4000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $127.2792
+
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+
+            expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
+            
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.3")).toFixed(0) // 30%
+
+            let totalCollateralvalueInUSd = new BigNumber(lptprice).multipliedBy(collateral).dividedBy(BASE)
+            let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
+            let collateralVaultAfter = remainingDebt.multipliedBy(CR).dividedBy(secondBase)
+            let collateralTobeReceived = (totalCollateralvalueInUSd.minus(collateralVaultAfter).multipliedBy(BASE).dividedBy(lptprice)).toFixed();
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralTobeReceived, debtToBePaid)
+
+        })
+
+        it("unlock - verify getTokenreturn - sufficient collateral - check remaining debt & collateral value", async function() { 
+
+            let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            await feedEthUsd.setPrice("400000000000") //$4000
+
+            let lptprice = await getOraclePriceForLPT(ethDaiPair, tDai.address, feedEthUsd.address)
+            lptprice = lptprice.toString() // $127.2792
+
+            let currentCr = new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(debt).dividedBy(BASE);
+
+            expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
+            
+            let debtToBePaid = (new BigNumber(debt).multipliedBy("0.7")).toFixed(0) // 70%
+
+            let totalCollateralvalueInUSd = new BigNumber(lptprice).multipliedBy(collateral).dividedBy(BASE)
+            let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
+            let collateralVaultAfter = remainingDebt.multipliedBy(CR).dividedBy(secondBase)
+            let collateralTobeReceived = (totalCollateralvalueInUSd.minus(collateralVaultAfter).multipliedBy(BASE).dividedBy(lptprice)).toFixed();
+
+            let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived);
+
+            expect(burn).to.emit(ethDaiVault, "Unlock")
+                .withArgs(signers[0].address, collateralTobeReceived, debtToBePaid)
+
+            let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+            let collateralAfter = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+            let remainingcollateralValueUSD = new BigNumber(collateralAfter).multipliedBy(lptprice).dividedBy(BASE)
+            let requiredDebt = new BigNumber(debtAfter).multipliedBy(CR).dividedBy(secondBase)
+
+            // console.log(remainingcollateralValueUSD.toFixed())
+            // console.log(requiredDebt.toFixed())
+
+            expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(false, "Invalid remaining collateral value")
+
+        })
+
     })
 
     describe("#emergencyUnlock", async () => {
