@@ -300,16 +300,19 @@ contract UniswapV2Vault is UnboundVaultBase {
             .mul(SECOND_BASE)
             .div(debt[msg.sender]);
 
-        // multiply by 1e24 to normalize it current CR (base for nomalization + 1e6 added in above step)
-        if (CR.mul(BASE.mul(SECOND_BASE)).div(SECOND_BASE) <= currentCR) {
+        // multiply by 1e26 to normalize it current CR (base for nomalization + 1e8 added in above step)
+        if (CR.mul(BASE) <= currentCR) {
+            // enough collateral
+            uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
+            uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
+            uint256 valueAfter = (CR.mul(loanAfter).mul(BASE)).div(SECOND_BASE);
+            amount = valueStart.sub(valueAfter).div(uint256(price));
+
+        } else {
+            // insufficient collateral
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(
                 debt[msg.sender]
             );
-        } else {
-            uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
-            uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
-            uint256 valueAfter = (CR.mul(loanAfter).mul(SECOND_BASE)).div(BASE);
-            amount = valueStart.sub(valueAfter).div(uint256(price));
         }
     }
 
