@@ -197,7 +197,7 @@ library UniswapV2PriceProvider {
         address _pair,
         uint256[] memory _decimals,
         address[] memory _feeds,
-        bool[] memory _isPeggedToUSD,
+        bool[] memory _isBase,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay
     ) external view returns (int256) {
@@ -205,7 +205,7 @@ library UniswapV2PriceProvider {
 
         uint256 chainlinkPrice0;
         uint256 chainlinkPrice1;
-        if (_isPeggedToUSD[0]) {
+        if (_isBase[0]) {
             chainlinkPrice0 = BASE;
             chainlinkPrice1 = uint256(getLatestPrice(_feeds, _allowedDelay));
         } else {

@@ -18,7 +18,7 @@ import '../UnboundYieldWallet.sol';
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
 
-    bool[] public isPeggedToUSD;
+    bool[] public isBase;
     uint256[] public decimals;
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
@@ -74,16 +74,14 @@ contract UniswapV2Vault is UnboundVaultBase {
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
         decimals.push(uint256(IERC20(pair.token1()).decimals()));
 
-        bool isPeggedToUSD0;
-        bool isPeggedToUSD1;
+        bool isBase0;
+        bool isBase1;
 
-        pair.token0() == _stablecoin
-            ? isPeggedToUSD0 = true
-            : isPeggedToUSD1 = true;
+        pair.token0() == _stablecoin ? isBase0 = true : isBase1 = true;
 
-        // push to isPeggedToUSD
-        isPeggedToUSD.push(isPeggedToUSD0);
-        isPeggedToUSD.push(isPeggedToUSD1);
+        // push to isBase
+        isBase.push(isBase0);
+        isBase.push(isBase1);
 
         feeds = _feeds;
         maxPercentDiff = _maxPercentDiff;
@@ -223,7 +221,7 @@ contract UniswapV2Vault is UnboundVaultBase {
             address(pair),
             decimals,
             feeds,
-            isPeggedToUSD,
+            isBase,
             maxPercentDiff,
             allowedDelay
         );
@@ -303,7 +301,7 @@ contract UniswapV2Vault is UnboundVaultBase {
             address(pair),
             decimals,
             feeds,
-            isPeggedToUSD,
+            isBase,
             maxPercentDiff,
             allowedDelay
         );
