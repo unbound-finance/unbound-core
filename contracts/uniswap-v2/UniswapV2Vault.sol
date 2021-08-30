@@ -295,6 +295,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         view
         returns (uint256 amount)
     {
+        require(CR != 0, 'NI');
+
         // get price of pool token from oracle
         int256 price = UniswapV2PriceProvider.latestAnswer(
             address(pair),
