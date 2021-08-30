@@ -211,6 +211,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         address _mintTo,
         uint256 _minUTokenAmount
     ) internal returns (uint256 amount) {
+        require(LTV != 0, 'NI');
         // check if user has sufficient balance
         require(pair.balanceOf(msg.sender) >= _amount, 'BAL');
 
