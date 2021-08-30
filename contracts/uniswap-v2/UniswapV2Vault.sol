@@ -8,6 +8,7 @@ import '../libraries/UniswapV2PriceProvider.sol';
 //  import interfaces
 import '../interfaces/IUnboundYieldWallet.sol';
 import '../interfaces/IUnboundYieldWalletFactory.sol';
+import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 
 // contracts
 import '../base/UnboundVaultBase.sol';
@@ -25,6 +26,9 @@ contract UniswapV2Vault is UnboundVaultBase {
 
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
+
+    IUniswapV2Factory uniswapFactory =
+        IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
 
     /**
      * @notice Creates new vault
@@ -59,6 +63,12 @@ contract UniswapV2Vault is UnboundVaultBase {
         uToken = IUnboundToken(_uToken);
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
+
+        // verify validity of the pool
+        require(
+            uniswapFactory.getPair(pair.token0(), pair.token1()) == _pair,
+            'INP'
+        );
 
         // decimals array
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
@@ -307,7 +317,6 @@ contract UniswapV2Vault is UnboundVaultBase {
             uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
             uint256 valueAfter = (CR.mul(loanAfter).mul(BASE)).div(SECOND_BASE);
             amount = valueStart.sub(valueAfter).div(uint256(price));
-
         } else {
             // insufficient collateral
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(

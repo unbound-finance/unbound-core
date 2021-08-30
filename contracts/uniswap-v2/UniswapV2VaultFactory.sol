@@ -6,6 +6,8 @@ import '@openzeppelin/contracts/security/Pausable.sol';
 import './UniswapV2Vault.sol';
 // libraries
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+
+// interfaces
 import '../interfaces/IERC20.sol';
 
 contract UniswapV2VaultFactory is Pausable {
@@ -112,7 +114,7 @@ contract UniswapV2VaultFactory is Pausable {
         governance = pendingGovernance;
     }
 
-     /**
+    /**
      * @notice Pause the mint and burn functionality
      */
     function setPause() external onlyGovernance {
