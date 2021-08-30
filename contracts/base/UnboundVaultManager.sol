@@ -90,7 +90,10 @@ contract UnboundVaultManager {
      * @notice Changes uToken mint limit
      * @param _uTokenMintLimit maximum uToken amount that can be minted. Set to 0 if limit is unlimited.
      */
-    function changeUTokenMintLimit(uint256 _uTokenMintLimit) external onlyGovernance {
+    function changeUTokenMintLimit(uint256 _uTokenMintLimit)
+        external
+        onlyGovernance
+    {
         uTokenMintLimit = _uTokenMintLimit;
         emit ChangeUTokenMintLimit(uTokenMintLimit);
     }
@@ -106,10 +109,10 @@ contract UnboundVaultManager {
 
     /**
      * @notice Changes loan to value ratio
-     * @param _LTV New loan to value ratio
+     * @param _LTV New loan to value ratio, 1e8 is 100%
      */
     function changeLTV(uint256 _LTV) external governanceAndManager {
-        require(_LTV <= 1e8);
+        require(_LTV <= SECOND_BASE);
         LTV = _LTV;
         emit ChangeLTV(_LTV);
     }
@@ -134,7 +137,7 @@ contract UnboundVaultManager {
 
     /**
      * @notice Change Stake Fee
-     * @param _stakeFee new stake fee
+     * @param _stakeFee new stake fee, 1e8 is 100%
      */
     function changeStakeFee(uint256 _stakeFee) external onlyGovernance {
         require(_stakeFee < SECOND_BASE);

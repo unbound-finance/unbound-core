@@ -155,8 +155,7 @@ describe('UnboundVaultBase', function () {
     })
 
     it('should revert if uToken mint limit is reached', async function () {
-
-      await ethDaiVault.changeUTokenMintLimit("1");
+      await ethDaiVault.changeUTokenMintLimit('1')
 
       let lockAmount = ethers.utils.parseEther('1').toString()
 
@@ -271,9 +270,7 @@ describe('UnboundVaultBase', function () {
       expect(await ethDaiVault.collateral(signers[0].address)).to.equal(
         lockAmount
       )
-      expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        mintAmount
-      )
+      expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount)
     })
 
     it('should increase debt amount when locking for second time(same amount) without paying first debt', async function () {
@@ -315,9 +312,7 @@ describe('UnboundVaultBase', function () {
         finalMintAmount
       )
 
-      expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        mintAmount
-      )
+      expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount)
 
       // locking for second time
 
@@ -330,9 +325,7 @@ describe('UnboundVaultBase', function () {
         finalMintAmount
       )
 
-      let finalDebt = new BigNumber(mintAmount)
-        .plus(mintAmount)
-        .toFixed()
+      let finalDebt = new BigNumber(mintAmount).plus(mintAmount).toFixed()
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt)
     })
@@ -376,9 +369,7 @@ describe('UnboundVaultBase', function () {
         finalMintAmount
       )
 
-      expect(await ethDaiVault.debt(signers[0].address)).to.equal(
-        mintAmount
-      )
+      expect(await ethDaiVault.debt(signers[0].address)).to.equal(mintAmount)
 
       // locking for second time
 
@@ -415,9 +406,7 @@ describe('UnboundVaultBase', function () {
         finalMintAmount2
       )
 
-      let finalDebt = new BigNumber(mintAmount)
-        .plus(mintAmount2)
-        .toFixed()
+      let finalDebt = new BigNumber(mintAmount).plus(mintAmount2).toFixed()
 
       expect(await ethDaiVault.debt(signers[0].address)).to.equal(finalDebt)
     })
@@ -430,10 +419,14 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
 
       // Transfer some extra und to user 0 to repay all debts
-      await ethDaiPair.transfer(signers[1].address, lockAmount);
-      await ethDaiPair.connect(signers[1]).approve(ethDaiVault.address, lockAmount);
-      await ethDaiVault.connect(signers[1]).lock(lockAmount, signers[1].address, zeroAddress, "1");
-      await und.connect(signers[1]).transfer(signers[0].address, lockAmount);
+      await ethDaiPair.transfer(signers[1].address, lockAmount)
+      await ethDaiPair
+        .connect(signers[1])
+        .approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault
+        .connect(signers[1])
+        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+      await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
     it('unlock - should emit unlock and burn event after repaying all debt', async function () {
@@ -554,16 +547,16 @@ async function getOraclePriceForLPT(pair, stablecoin, feed) {
     let maxPercentDiff = '900000000000000000'
     let allowedDelay = 5000
 
-    let isPeggedToUSD0 = false
-    let isPeggedToUSD1 = false
+    let isBase0 = false
+    let isBase1 = false
 
     let token0 = await pair.token0()
     let token1 = await pair.token1()
 
     if (token0.toLowerCase() == stablecoin.toLowerCase()) {
-      isPeggedToUSD0 = true
+      isBase0 = true
     } else {
-      isPeggedToUSD1 = true
+      isBase1 = true
     }
 
     let token0Instance = await ethers.getContractAt('TestEth', token0)
@@ -576,7 +569,7 @@ async function getOraclePriceForLPT(pair, stablecoin, feed) {
       pair.address,
       [token0Decimals, token1Decimals],
       [feed],
-      [isPeggedToUSD0, isPeggedToUSD1],
+      [isBase0, isBase1],
       maxPercentDiff,
       allowedDelay
     )
