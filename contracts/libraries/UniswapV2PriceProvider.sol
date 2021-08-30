@@ -12,7 +12,11 @@ library UniswapV2PriceProvider {
 
     uint256 constant BASE = uint256(1e18);
 
-    // Returns square root using Babylon method
+    /**
+     * @notice Returns square root using Babylon method
+     * @param y value of which the square root should be calculated
+     * @return z Sqrt of the y
+     */
     function sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
             z = y;
@@ -28,10 +32,12 @@ library UniswapV2PriceProvider {
 
     /**
      * Returns geometric mean of both reserves, multiplied by price of Chainlink.
+     * @param _pair Address of the Uniswap V2 pair
      * @param _reserve0 reserves of the first asset
      * @param _reserve1 reserves of second asset
+     * @return Geometric mean of given values
      */
-    function getWeightedGeometricMean(
+    function getGeometricMean(
         address _pair,
         uint256 _reserve0,
         uint256 _reserve1
@@ -45,8 +51,10 @@ library UniswapV2PriceProvider {
 
     /**
      * Calculates the price of the pair token using the formula of arithmetic mean.
+     * @param _pair Address of the Uniswap V2 pair
      * @param _reserve0 Total eth for token 0.
      * @param _reserve1 Total eth for token 1.
+     * @return Arithematic mean of _reserve0 and _reserve1
      */
     function getArithmeticMean(
         address _pair,
@@ -60,6 +68,7 @@ library UniswapV2PriceProvider {
     /**
      * @notice Returns Uniswap V2 pair total supply at the time of withdrawal.
      * @param _pair Address of the pair
+     * @return totalSupply Total supply of the Uniswap V2 pair at the time user withdraws
      */
     function getTotalSupplyAtWithdrawal(address _pair)
         internal
@@ -87,9 +96,10 @@ library UniswapV2PriceProvider {
     }
 
     /**
-     * Returns normalised value in 18 digits
+     * @notice Returns normalised value in 18 digits
      * @param _value Value which we want to normalise
      * @param _decimals Number of decimals from which we want to normalise
+     * @return normalised Returns normalised value in 1e18 format
      */
     function normalise(uint256 _value, uint256 _decimals)
         internal
@@ -110,6 +120,7 @@ library UniswapV2PriceProvider {
      * Returns price from Chainlink feed
      * @param _feed Chainlink feed address
      * @param _allowedDelay Allowed delay to check chainlink update delay
+     * @return Chainlink price
      */
     function getChainlinkPrice(address _feed, uint256 _allowedDelay)
         internal
@@ -127,7 +138,10 @@ library UniswapV2PriceProvider {
     }
 
     /**
-     * Returns latest price of the token
+     * @notice Get latest price from Chainlink
+     * @param _feeds Array of the Chainlink feeds
+     * @param _allowedDelay Allowed delay in the Chainlink price update
+     * @return price Latest chainlink price
      */
     function getLatestPrice(address[] memory _feeds, uint256 _allowedDelay)
         public
@@ -145,9 +159,11 @@ library UniswapV2PriceProvider {
     }
 
     /**
-     * Returns reserve value in dollars
+     * @notice Returns reserve value in dollars
      * @param _price Chainlink Price.
      * @param _reserve Token reserves.
+     * @param _decimals Number of decimals in the the reserve value
+     * @return Returns normalised reserve value in 1e18
      */
     function getReserveValue(
         uint256 _price,
@@ -160,9 +176,11 @@ library UniswapV2PriceProvider {
     }
 
     /**
-     * Returns true if there is price difference
+     * @notice Returns true if there is price difference
      * @param _reserve0 Reserve value of first reserve in stablecoin.
      * @param _reserve1 Reserve value of first reserve in stablecoin.
+     * @param _maxPercentDiff Maximum deviation at which geometric mean should take in effect
+     * @return result True if there is different in both prices, false if not.
      */
     function hasPriceDifference(
         uint256 _reserve0,
@@ -191,13 +209,17 @@ library UniswapV2PriceProvider {
      *   It calculates the price using Chainlink as an external price source and the pair's tokens reserves using the arithmetic mean formula.
      *   If there is a price deviation, instead of the reserves, it uses a weighted geometric mean with constant invariant K.
      * @param _pair Address of the Uniswap V2 pair
+     * @param _decimals Array of the number of decimals in both pairs
+     * @param _feeds Array of Chainlink feeds
+     * @param _maxPercentDiff Maximum percentage different when GM should come in effect
+     * @param _allowedDelay Allowed delay in Chainlink update
      * @return int256 price
      */
     function latestAnswer(
         address _pair,
         uint256[] memory _decimals,
         address[] memory _feeds,
-        bool[] memory _isPeggedToUSD,
+        bool[] memory _isBase,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay
     ) external view returns (int256) {
@@ -205,7 +227,7 @@ library UniswapV2PriceProvider {
 
         uint256 chainlinkPrice0;
         uint256 chainlinkPrice1;
-        if (_isPeggedToUSD[0]) {
+        if (_isBase[0]) {
             chainlinkPrice0 = BASE;
             chainlinkPrice1 = uint256(getLatestPrice(_feeds, _allowedDelay));
         } else {
@@ -237,7 +259,7 @@ library UniswapV2PriceProvider {
             //Calculate the weighted geometric mean
             return
                 int256(
-                    getWeightedGeometricMean(
+                    getGeometricMean(
                         _pair,
                         reserveInStablecoin0,
                         reserveInStablecoin1

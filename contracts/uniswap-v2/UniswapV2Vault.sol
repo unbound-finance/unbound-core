@@ -8,6 +8,7 @@ import '../libraries/UniswapV2PriceProvider.sol';
 //  import interfaces
 import '../interfaces/IUnboundYieldWallet.sol';
 import '../interfaces/IUnboundYieldWalletFactory.sol';
+import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 
 // contracts
 import '../base/UnboundVaultBase.sol';
@@ -17,7 +18,7 @@ import '../UnboundYieldWallet.sol';
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
 
-    bool[] public isPeggedToUSD;
+    bool[] public isBase;
     uint256[] public decimals;
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
@@ -25,6 +26,9 @@ contract UniswapV2Vault is UnboundVaultBase {
 
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
+
+    IUniswapV2Factory uniswapFactory =
+        IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
 
     /**
      * @notice Creates new vault
@@ -60,20 +64,24 @@ contract UniswapV2Vault is UnboundVaultBase {
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
 
+        // verify validity of the pool
+        require(
+            uniswapFactory.getPair(pair.token0(), pair.token1()) == _pair,
+            'INP'
+        );
+
         // decimals array
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
         decimals.push(uint256(IERC20(pair.token1()).decimals()));
 
-        bool isPeggedToUSD0;
-        bool isPeggedToUSD1;
+        bool isBase0;
+        bool isBase1;
 
-        pair.token0() == _stablecoin
-            ? isPeggedToUSD0 = true
-            : isPeggedToUSD1 = true;
+        pair.token0() == _stablecoin ? isBase0 = true : isBase1 = true;
 
-        // push to isPeggedToUSD
-        isPeggedToUSD.push(isPeggedToUSD0);
-        isPeggedToUSD.push(isPeggedToUSD1);
+        // push to isBase
+        isBase.push(isBase0);
+        isBase.push(isBase1);
 
         feeds = _feeds;
         maxPercentDiff = _maxPercentDiff;
@@ -201,6 +209,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         address _mintTo,
         uint256 _minUTokenAmount
     ) internal returns (uint256 amount) {
+        require(LTV != 0, 'NI');
         // check if user has sufficient balance
         require(pair.balanceOf(msg.sender) >= _amount, 'BAL');
 
@@ -212,7 +221,7 @@ contract UniswapV2Vault is UnboundVaultBase {
             address(pair),
             decimals,
             feeds,
-            isPeggedToUSD,
+            isBase,
             maxPercentDiff,
             allowedDelay
         );
@@ -285,12 +294,14 @@ contract UniswapV2Vault is UnboundVaultBase {
         view
         returns (uint256 amount)
     {
+        require(CR != 0, 'NI');
+
         // get price of pool token from oracle
         int256 price = UniswapV2PriceProvider.latestAnswer(
             address(pair),
             decimals,
             feeds,
-            isPeggedToUSD,
+            isBase,
             maxPercentDiff,
             allowedDelay
         );
@@ -300,16 +311,18 @@ contract UniswapV2Vault is UnboundVaultBase {
             .mul(SECOND_BASE)
             .div(debt[msg.sender]);
 
-        // multiply by 1e24 to normalize it current CR (base for nomalization + 1e6 added in above step)
-        if (CR.mul(BASE.mul(SECOND_BASE)).div(SECOND_BASE) <= currentCR) {
+        // multiply by 1e26 to normalize it current CR (base for nomalization + 1e8 added in above step)
+        if (CR.mul(BASE) <= currentCR) {
+            // enough collateral
+            uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
+            uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
+            uint256 valueAfter = (CR.mul(loanAfter).mul(BASE)).div(SECOND_BASE);
+            amount = valueStart.sub(valueAfter).div(uint256(price));
+        } else {
+            // insufficient collateral
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(
                 debt[msg.sender]
             );
-        } else {
-            uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
-            uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
-            uint256 valueAfter = (CR.mul(loanAfter).mul(SECOND_BASE)).div(BASE);
-            amount = valueStart.sub(valueAfter).div(uint256(price));
         }
     }
 
