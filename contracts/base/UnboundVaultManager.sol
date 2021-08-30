@@ -109,7 +109,7 @@ contract UnboundVaultManager {
 
     /**
      * @notice Changes loan to value ratio
-     * @param _LTV New loan to value ratio
+     * @param _LTV New loan to value ratio, 1e8 is 100%
      */
     function changeLTV(uint256 _LTV) external governanceAndManager {
         require(_LTV <= SECOND_BASE);
@@ -137,7 +137,7 @@ contract UnboundVaultManager {
 
     /**
      * @notice Change Stake Fee
-     * @param _stakeFee new stake fee
+     * @param _stakeFee new stake fee, 1e8 is 100%
      */
     function changeStakeFee(uint256 _stakeFee) external onlyGovernance {
         require(_stakeFee < SECOND_BASE);
