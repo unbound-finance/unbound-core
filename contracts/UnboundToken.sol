@@ -87,7 +87,8 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
      * @param _minter Address of the minter
      */
     function enableMinter(address _minter) external onlyGovernance {
-        require(block.timestamp.sub(addTime[_minter]) >= 604800);
+        require(addTime[_minter] > 0);
+        require(block.timestamp.sub(addTime[_minter]) >= 1 weeks);
         minters[_minter] = true;
         emit EnableMinter(_minter);
     }
