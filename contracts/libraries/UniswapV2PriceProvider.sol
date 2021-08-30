@@ -31,7 +31,7 @@ library UniswapV2PriceProvider {
      * @param _reserve0 reserves of the first asset
      * @param _reserve1 reserves of second asset
      */
-    function getWeightedGeometricMean(
+    function getGeometricMean(
         address _pair,
         uint256 _reserve0,
         uint256 _reserve1
@@ -237,7 +237,7 @@ library UniswapV2PriceProvider {
             //Calculate the weighted geometric mean
             return
                 int256(
-                    getWeightedGeometricMean(
+                    getGeometricMean(
                         _pair,
                         reserveInStablecoin0,
                         reserveInStablecoin1
