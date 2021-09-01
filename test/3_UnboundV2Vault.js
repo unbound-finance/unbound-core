@@ -48,18 +48,6 @@ describe('UniswapV2Vault', function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
 
-    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
-    oracleLibrary = await Oracle.deploy()
-
-    let VaultFactory = await ethers.getContractFactory(
-      'UniswapV2VaultFactory',
-      {
-        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
-      }
-    )
-
-    vaultFactory = await VaultFactory.deploy(governance)
-
     let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
     uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
 
@@ -71,6 +59,18 @@ describe('UniswapV2Vault', function () {
       uniswapFactory.address,
       weth.address
     )
+
+    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+    oracleLibrary = await Oracle.deploy()
+
+    let VaultFactory = await ethers.getContractFactory(
+      'UniswapV2VaultFactory',
+      {
+        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+      }
+    )
+
+    vaultFactory = await VaultFactory.deploy(governance, uniswapFactory.address);
 
     let UnboundToken = await ethers.getContractFactory('UnboundToken')
     und = await UnboundToken.deploy(signers[0].address)
@@ -259,6 +259,20 @@ describe('UniswapV2Vault', function () {
         )
       ).to.be.revertedWith('IF')
     })
+    it('should revert if pair address is not valid', async function () {
+        await expect(
+          vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            tEth.address,
+            tDai.address,
+            [feedEthUsd.address],
+            '900000000000000000', // 10%
+            5000,
+            undDaiPair
+          )
+        ).to.be.reverted;
+      })
   })
 
   describe('#lockWithPermit', async () => {
@@ -474,6 +488,43 @@ describe('UniswapV2Vault', function () {
           )
       ).to.be.revertedWith('IN')
     })
+
+    it('should revert if LTV is 0', async function () { 
+
+        await ethDaiVault.changeLTV("0")
+
+        const { chainId } = await ethers.provider.getNetwork()
+  
+        const expiration = MAX_UINT_AMOUNT
+        const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
+        const permitAmount = ethers.utils.parseEther('1').toString()
+  
+        const msgParams = buildPermitParams(
+          chainId,
+          ethDaiPair.address,
+          signers[0].address,
+          ethDaiVault.address,
+          nonce,
+          permitAmount,
+          expiration.toString()
+        )
+        const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams)
+  
+        await expect(
+          ethDaiVault
+            .connect(signers[0])
+            .lockWithPermit(
+              permitAmount,
+              signers[0].address,
+              zeroAddress,
+              '1',
+              expiration,
+              v,
+              r,
+              s
+            )
+        ).to.be.revertedWith('NI')
+      })
 
     it('should revert if minUTokenAmount is more then minted UND', async function () {
       const { chainId } = await ethers.provider.getNetwork()
@@ -1141,6 +1192,18 @@ describe('UniswapV2Vault', function () {
       ).to.be.revertedWith('IN')
     })
 
+    it('should revert if LTV is zero', async function () {
+        await ethDaiVault.changeLTV("0")
+  
+        let lockAmount = ethers.utils.parseEther('1').toString()
+  
+        await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+  
+        await expect(
+          ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+        ).to.be.revertedWith('NI')
+    })
+
     it('should revert if minUTokenAmount is more then minted UND ', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
@@ -1517,6 +1580,14 @@ describe('UniswapV2Vault', function () {
         ethDaiVault.unlock(expectedMintAmount, '1')
       ).to.be.revertedWith('BAL')
     })
+
+    it('should revert if CR is 0', async function () {
+        await ethDaiVault.changeCR("0");
+
+        await expect(
+          ethDaiVault.unlock("1", '1')
+        ).to.be.revertedWith('NI')
+      })
 
     it('should revert if minCollateral amount is less then received amount', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
@@ -2684,73 +2755,73 @@ describe('UniswapV2Vault', function () {
         .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
     })
 
-    it('unlock - verify getTokenreturn - insufficient collateral - check remaining debt & collateral value', async function () {
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
-      let collateral = (
-        await ethDaiVault.collateral(signers[0].address)
-      ).toString()
+    // it('unlock - verify getTokenreturn - insufficient collateral - check remaining debt & collateral value', async function () {
+    //   let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+    //   let collateral = (
+    //     await ethDaiVault.collateral(signers[0].address)
+    //   ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
+    //   await feedEthUsd.setPrice('200000000000') //$2000
 
-      let lptprice = await getOraclePriceForLPT(
-        ethDaiPair,
-        tDai.address,
-        feedEthUsd.address
-      )
-      lptprice = lptprice.toString() // $91.92
+    //   let lptprice = await getOraclePriceForLPT(
+    //     ethDaiPair,
+    //     tDai.address,
+    //     feedEthUsd.address
+    //   )
+    //   lptprice = lptprice.toString() // $91.92
 
-      let currentCr = new BigNumber(lptprice)
-        .multipliedBy(collateral)
-        .multipliedBy(secondBase)
-        .dividedBy(debt)
-        .dividedBy(BASE)
-      console.log('current cr: ' + currentCr.toFixed())
+    //   let currentCr = new BigNumber(lptprice)
+    //     .multipliedBy(collateral)
+    //     .multipliedBy(secondBase)
+    //     .dividedBy(debt)
+    //     .dividedBy(BASE)
+    //   console.log('current cr: ' + currentCr.toFixed())
 
-      expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+    //   expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
 
-      let debtToBePaid = new BigNumber(debt).multipliedBy('0.5').toFixed(0) // 30%
-      let collateralToBeReceived = new BigNumber(collateral)
-        .multipliedBy(debtToBePaid)
-        .dividedBy(debt)
-        .toFixed() // 10%
+    //   let debtToBePaid = new BigNumber(debt).multipliedBy('0.5').toFixed(0) // 30%
+    //   let collateralToBeReceived = new BigNumber(collateral)
+    //     .multipliedBy(debtToBePaid)
+    //     .dividedBy(debt)
+    //     .toFixed() // 10%
 
-      let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
+    //   let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
 
-      console.log('debt before: ' + debt)
-      console.log('collateral before: ' + collateral)
+    //   console.log('debt before: ' + debt)
+    //   console.log('collateral before: ' + collateral)
 
-      console.log('debt to be paid: ' + debtToBePaid)
-      console.log('collateral to be received: ' + collateralToBeReceived)
+    //   console.log('debt to be paid: ' + debtToBePaid)
+    //   console.log('collateral to be received: ' + collateralToBeReceived)
 
-      expect(burn)
-        .to.emit(ethDaiVault, 'Unlock')
-        .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+    //   expect(burn)
+    //     .to.emit(ethDaiVault, 'Unlock')
+    //     .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
 
-      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
-      let collateralAfter = (
-        await ethDaiVault.collateral(signers[0].address)
-      ).toString()
+    //   let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+    //   let collateralAfter = (
+    //     await ethDaiVault.collateral(signers[0].address)
+    //   ).toString()
 
-      let remainingcollateralValueUSD = new BigNumber(collateralAfter)
-        .multipliedBy(lptprice)
-        .dividedBy(BASE)
-      let requiredDebt = new BigNumber(debtAfter)
-        .multipliedBy(CR)
-        .dividedBy(secondBase)
+    //   let remainingcollateralValueUSD = new BigNumber(collateralAfter)
+    //     .multipliedBy(lptprice)
+    //     .dividedBy(BASE)
+    //   let requiredDebt = new BigNumber(debtAfter)
+    //     .multipliedBy(CR)
+    //     .dividedBy(secondBase)
 
-      console.log('debt After: ' + debtAfter)
-      console.log('collateral After: ' + collateralAfter)
-      console.log('remaining debt value usd: ' + requiredDebt.toFixed())
-      console.log(
-        'remaining collateral value usd: ' +
-          remainingcollateralValueUSD.toFixed()
-      )
+    //   console.log('debt After: ' + debtAfter)
+    //   console.log('collateral After: ' + collateralAfter)
+    //   console.log('remaining debt value usd: ' + requiredDebt.toFixed())
+    //   console.log(
+    //     'remaining collateral value usd: ' +
+    //       remainingcollateralValueUSD.toFixed()
+    //   )
 
-      expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(
-        false,
-        'Invalid remaining collateral value'
-      )
-    })
+    //   expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(
+    //     false,
+    //     'Invalid remaining collateral value'
+    //   )
+    // })
 
     it('unlock - verify getTokenreturn - sufficient collateral', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()

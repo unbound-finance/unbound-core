@@ -27,9 +27,6 @@ contract UniswapV2Vault is UnboundVaultBase {
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
 
-    IUniswapV2Factory uniswapFactory =
-        IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
-
     /**
      * @notice Creates new vault
      * @param _uToken Address of the Unbound Token
@@ -49,7 +46,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         address[] memory _feeds,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
-        address _staking
+        address _staking,
+        address _uniswapFactory
     ) {
         require(
             _uToken != address(0) &&
@@ -66,7 +64,7 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         // verify validity of the pool
         require(
-            uniswapFactory.getPair(pair.token0(), pair.token1()) == _pair,
+            IUniswapV2Factory(_uniswapFactory).getPair(pair.token0(), pair.token1()) == _pair,
             'INP'
         );
 
