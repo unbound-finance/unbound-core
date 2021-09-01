@@ -19,6 +19,8 @@ contract UniswapV2VaultFactory is Pausable {
 
     uint256 public index;
 
+    address public uniswapFactory;
+
     mapping(uint256 => address) public vaultByIndex;
 
     event NewVault(address _vault, uint256 _index);
@@ -34,9 +36,11 @@ contract UniswapV2VaultFactory is Pausable {
 
     /**
      * @param _governance Address of the governance
+     * @param _factory Address of the uniswap factory contract
      */
-    constructor(address _governance) {
+    constructor(address _governance, address _factory) {
         governance = _governance;
+        uniswapFactory = _factory;
     }
 
     /**
@@ -69,7 +73,8 @@ contract UniswapV2VaultFactory is Pausable {
                 _feeds,
                 _maxPercentDiff,
                 _allowedDelay,
-                _staking
+                _staking,
+                uniswapFactory
             )
         );
         index = index + 1;

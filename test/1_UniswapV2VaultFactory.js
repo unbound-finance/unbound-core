@@ -26,24 +26,29 @@ describe("UniswapV2VaultFactory", function() {
         signers = await ethers.getSigners();
         governance = signers[0].address;
 
-        let Oracle = await ethers.getContractFactory("UniswapV2PriceProvider");
-        oracleLibrary = await Oracle.deploy();
-
-        let VaultFactory = await ethers.getContractFactory("UniswapV2VaultFactory", {
-            libraries: { UniswapV2PriceProvider: oracleLibrary.address }
-        });
-        
-        vaultFactory = await VaultFactory.deploy(governance);
-
-        let UniswapV2Factory = await ethers.getContractFactory("UniswapV2Factory");
-        uniswapFactory = await UniswapV2Factory.deploy(zeroAddress);
-
-        let WETH9 = await ethers.getContractFactory("WETH9");
-        weth = await WETH9.deploy();
-
-        let UniswapV2Router02 = await ethers.getContractFactory("UniswapV2Router02");
-        uniswapRouter = await UniswapV2Router02.deploy(uniswapFactory.address, weth.address);
-
+        let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
+        uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
+    
+        let WETH9 = await ethers.getContractFactory('WETH9')
+        weth = await WETH9.deploy()
+    
+        let UniswapV2Router02 = await ethers.getContractFactory('UniswapV2Router02')
+        uniswapRouter = await UniswapV2Router02.deploy(
+          uniswapFactory.address,
+          weth.address
+        )
+    
+        let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+        oracleLibrary = await Oracle.deploy()
+    
+        let VaultFactory = await ethers.getContractFactory(
+          'UniswapV2VaultFactory',
+          {
+            libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+          }
+        )
+    
+        vaultFactory = await VaultFactory.deploy(governance, uniswapFactory.address)
         let UnboundToken = await ethers.getContractFactory("UnboundToken");
         und = await UnboundToken.deploy(signers[0].address);
 
