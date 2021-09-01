@@ -44,18 +44,6 @@ describe('UnboundYieldWalletFactory', function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
 
-    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
-    oracleLibrary = await Oracle.deploy()
-
-    let VaultFactory = await ethers.getContractFactory(
-      'UniswapV2VaultFactory',
-      {
-        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
-      }
-    )
-
-    vaultFactory = await VaultFactory.deploy(governance)
-
     let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
     uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
 
@@ -67,6 +55,18 @@ describe('UnboundYieldWalletFactory', function () {
       uniswapFactory.address,
       weth.address
     )
+
+    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+    oracleLibrary = await Oracle.deploy()
+
+    let VaultFactory = await ethers.getContractFactory(
+      'UniswapV2VaultFactory',
+      {
+        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+      }
+    )
+
+    vaultFactory = await VaultFactory.deploy(governance, uniswapFactory.address);
 
     let UnboundToken = await ethers.getContractFactory('UnboundToken')
     und = await UnboundToken.deploy(signers[0].address)
@@ -169,6 +169,24 @@ describe('UnboundYieldWalletFactory', function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.not.equal(
         zeroAddress
       )
+    })
+
+    it('should emit event when creating new yield wallet for first time user locking LPT', async function () {
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
+        zeroAddress
+      )
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await expect(ethDaiVault.lock(
+        lockAmount,
+        signers[0].address,
+        yieldWalletFactory.address,
+        0
+      )).to.emit(yieldWalletFactory, "YeildWalletFactory")
+      
     })
   })
 })
