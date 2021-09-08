@@ -2681,8 +2681,27 @@ describe('UniswapV2Vault', function () {
       expect(await ethDaiVault.debt(signers[0].address)).to.equal('0')
       expect(await ethDaiVault.collateral(signers[0].address)).to.equal('0')
     })
+  })
 
-    it('unlock - verify getTokenreturn - insufficient collateral', async function () {
+  describe('#getTokenreturn', async () => {
+    beforeEach(async function () {
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+
+      // Transfer some extra und to user 0 to repay all debts
+      await ethDaiPair.transfer(signers[1].address, lockAmount)
+      await ethDaiPair
+        .connect(signers[1])
+        .approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault
+        .connect(signers[1])
+        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+      await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
+    })
+
+
+    it('unlock - insufficient collateral repay 90% debt', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (
         await ethDaiVault.collateral(signers[0].address)
@@ -2704,14 +2723,21 @@ describe('UniswapV2Vault', function () {
         .dividedBy(BASE)
       // console.log(currentCr.toFixed())
 
-      expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+      expect(currentCr.isLessThan(CR)).to.equal(true, "Invalid CR ratio. Should be less then 200%") // insufficient collateral - 162%
 
       let debtToBePaid = new BigNumber(debt).multipliedBy('0.9').toFixed(0) // 90%
-      let collateralToBeReceived = new BigNumber(collateral)
-        .multipliedBy(debtToBePaid)
-        .dividedBy(debt)
-        .toFixed() // 10%
 
+      let collateralValue = (new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(CR).dividedBy(BASE)).toFixed()
+      let remainingValue = (new BigNumber(debt).minus(collateralValue)).toFixed()
+      let collateralToBeReceived;
+      
+      if(new BigNumber(debtToBePaid).isLessThanOrEqualTo(remainingValue)){
+        collateralToBeReceived = 0;
+      } else {
+        let remainingLoan = (new BigNumber(debtToBePaid).minus(remainingValue)).toFixed()
+        collateralToBeReceived = (new BigNumber(CR).multipliedBy(remainingLoan).multipliedBy(BASE).dividedBy(lptprice).dividedBy(secondBase)).toFixed()
+      }
+      
       let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
 
       expect(burn)
@@ -2719,7 +2745,7 @@ describe('UniswapV2Vault', function () {
         .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
     })
 
-    it('unlock - verify getTokenreturn - insufficient collateral', async function () {
+    it('unlock - insufficient collateral repay 50% debt', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (
         await ethDaiVault.collateral(signers[0].address)
@@ -2740,14 +2766,21 @@ describe('UniswapV2Vault', function () {
         .dividedBy(debt)
         .dividedBy(BASE)
 
-      expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+        expect(currentCr.isLessThan(CR)).to.equal(true, "Invalid CR ratio. Should be less then 200%") // insufficient collateral - 162%
 
       let debtToBePaid = new BigNumber(debt).multipliedBy('0.5').toFixed(0) // 50%
-      let collateralToBeReceived = new BigNumber(collateral)
-        .multipliedBy(debtToBePaid)
-        .dividedBy(debt)
-        .toFixed() // 10%
-
+      
+      let collateralValue = (new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(CR).dividedBy(BASE)).toFixed()
+      let remainingValue = (new BigNumber(debt).minus(collateralValue)).toFixed()
+      let collateralToBeReceived;
+      
+      if(new BigNumber(debtToBePaid).isLessThanOrEqualTo(remainingValue)){
+        collateralToBeReceived = 0;
+      } else {
+        let remainingLoan = (new BigNumber(debtToBePaid).minus(remainingValue)).toFixed()
+        collateralToBeReceived = (new BigNumber(CR).multipliedBy(remainingLoan).multipliedBy(BASE).dividedBy(lptprice).dividedBy(secondBase)).toFixed()
+      }
+      
       let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
 
       expect(burn)
@@ -2755,73 +2788,235 @@ describe('UniswapV2Vault', function () {
         .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
     })
 
-    // it('unlock - verify getTokenreturn - insufficient collateral - check remaining debt & collateral value', async function () {
-    //   let debt = (await ethDaiVault.debt(signers[0].address)).toString()
-    //   let collateral = (
-    //     await ethDaiVault.collateral(signers[0].address)
-    //   ).toString()
+    it('unlock - insufficient collateral - check remaining debt & collateral value', async function () {
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
 
-    //   await feedEthUsd.setPrice('200000000000') //$2000
+      await feedEthUsd.setPrice('200000000000') //$2000
 
-    //   let lptprice = await getOraclePriceForLPT(
-    //     ethDaiPair,
-    //     tDai.address,
-    //     feedEthUsd.address
-    //   )
-    //   lptprice = lptprice.toString() // $91.92
+      let lptprice = await getOraclePriceForLPT(
+        ethDaiPair,
+        tDai.address,
+        feedEthUsd.address
+      )
+      lptprice = lptprice.toString() // $91.92
 
-    //   let currentCr = new BigNumber(lptprice)
-    //     .multipliedBy(collateral)
-    //     .multipliedBy(secondBase)
-    //     .dividedBy(debt)
-    //     .dividedBy(BASE)
-    //   console.log('current cr: ' + currentCr.toFixed())
+      console.log("lptprice: " + lptprice)
+      let currentCr = new BigNumber(lptprice)
+        .multipliedBy(collateral)
+        .multipliedBy(secondBase)
+        .dividedBy(debt)
+        .dividedBy(BASE)
+      console.log('current cr: ' + currentCr.toFixed())
 
-    //   expect(currentCr.toNumber()).to.be.below(Number(CR)) // insufficient collateral - 162%
+      expect(currentCr.isLessThan(CR)).to.equal(true, "Invalid CR ratio. Should be less then 200%") // insufficient collateral - 162%
 
-    //   let debtToBePaid = new BigNumber(debt).multipliedBy('0.5').toFixed(0) // 30%
-    //   let collateralToBeReceived = new BigNumber(collateral)
-    //     .multipliedBy(debtToBePaid)
-    //     .dividedBy(debt)
-    //     .toFixed() // 10%
+      let debtToBePaid = new BigNumber(debt).multipliedBy('0.3').toFixed(0) // 30%
 
-    //   let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
+      let collateralValue = (new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(CR).dividedBy(BASE)).toFixed()
+      let remainingValue = (new BigNumber(debt).minus(collateralValue)).toFixed()
+      let collateralToBeReceived;
+      
+      if(new BigNumber(debtToBePaid).isLessThanOrEqualTo(remainingValue)){
+        collateralToBeReceived = "0";
+      } else {
+        let remainingLoan = (new BigNumber(debtToBePaid).minus(remainingValue)).toFixed()
+        console.log("remainingLoan: " + remainingLoan)
+        collateralToBeReceived = (new BigNumber(CR).multipliedBy(remainingLoan).multipliedBy(BASE).dividedBy(lptprice).dividedBy(secondBase)).toFixed()
+      }
+      
+      console.log("collateralToBeReceived: " + collateralToBeReceived)
+      let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
 
-    //   console.log('debt before: ' + debt)
-    //   console.log('collateral before: ' + collateral)
+      console.log('debt before: ' + debt)
+      console.log('collateral before: ' + collateral)
 
-    //   console.log('debt to be paid: ' + debtToBePaid)
-    //   console.log('collateral to be received: ' + collateralToBeReceived)
+      console.log('debt to be paid: ' + debtToBePaid)
+      console.log('collateral to be received: ' + collateralToBeReceived)
 
-    //   expect(burn)
-    //     .to.emit(ethDaiVault, 'Unlock')
-    //     .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+      expect(burn)
+        .to.emit(ethDaiVault, 'Unlock')
+        .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
 
-    //   let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
-    //   let collateralAfter = (
-    //     await ethDaiVault.collateral(signers[0].address)
-    //   ).toString()
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
 
-    //   let remainingcollateralValueUSD = new BigNumber(collateralAfter)
-    //     .multipliedBy(lptprice)
-    //     .dividedBy(BASE)
-    //   let requiredDebt = new BigNumber(debtAfter)
-    //     .multipliedBy(CR)
-    //     .dividedBy(secondBase)
+      let remainingcollateralValueUSD = new BigNumber(collateralAfter)
+        .multipliedBy(lptprice)
+        .dividedBy(BASE)
+      let requiredDebt = new BigNumber(debtAfter)
+        .multipliedBy(CR)
+        .dividedBy(secondBase)
 
-    //   console.log('debt After: ' + debtAfter)
-    //   console.log('collateral After: ' + collateralAfter)
-    //   console.log('remaining debt value usd: ' + requiredDebt.toFixed())
-    //   console.log(
-    //     'remaining collateral value usd: ' +
-    //       remainingcollateralValueUSD.toFixed()
-    //   )
+      console.log('debt After: ' + debtAfter)
+      console.log('collateral After: ' + collateralAfter)
+      console.log('remaining debt value usd: ' + requiredDebt.toFixed())
+      console.log(
+        'remaining collateral value usd: ' +
+          remainingcollateralValueUSD.toFixed()
+      )
 
-    //   expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(
-    //     false,
-    //     'Invalid remaining collateral value'
-    //   )
-    // })
+      let currentCr2 = new BigNumber(lptprice)
+        .multipliedBy(collateralAfter)
+        .multipliedBy(secondBase)
+        .dividedBy(debtAfter)
+        .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
+
+      expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(
+        false,
+        'Invalid remaining collateral value'
+      )
+
+    })
+
+    it('unlock - insufficient collateral - check user cr ratio after unlock. should be equal to 200%', async function () {
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await feedEthUsd.setPrice('200000000000') //$2000
+
+      let lptprice = await getOraclePriceForLPT(
+        ethDaiPair,
+        tDai.address,
+        feedEthUsd.address
+      )
+      lptprice = lptprice.toString() // $91.92
+
+      let currentCr = new BigNumber(lptprice)
+        .multipliedBy(collateral)
+        .multipliedBy(secondBase)
+        .dividedBy(debt)
+        .dividedBy(BASE)
+      console.log('current cr: ' + currentCr.toFixed())
+
+      expect(currentCr.isLessThan(CR)).to.equal(true, "Invalid CR ratio. Should be less then 200%") // insufficient collateral - 162%
+
+      let debtToBePaid = new BigNumber(debt).multipliedBy('0.3').toFixed(0) // 30%
+
+      let collateralValue = (new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(CR).dividedBy(BASE)).toFixed()
+      let remainingValue = (new BigNumber(debt).minus(collateralValue)).toFixed()
+      let collateralToBeReceived;
+      
+      if(new BigNumber(debtToBePaid).isLessThanOrEqualTo(remainingValue)){
+        collateralToBeReceived = 0;
+      } else {
+        let remainingLoan = (new BigNumber(debtToBePaid).minus(remainingValue)).toFixed()
+        collateralToBeReceived = (new BigNumber(CR).multipliedBy(remainingLoan).multipliedBy(BASE).dividedBy(lptprice).dividedBy(secondBase)).toFixed()
+      }
+      
+      let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
+
+      expect(burn)
+        .to.emit(ethDaiVault, 'Unlock')
+        .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      let currentCr2 = new BigNumber(lptprice)
+        .multipliedBy(collateralAfter)
+        .multipliedBy(secondBase)
+        .dividedBy(debtAfter)
+        .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
+
+
+      expect(currentCr2.isEqualTo(CR)).to.equal(
+        true,
+        'Invalid user cr ratio after unlock'
+      )
+    })
+
+    it('unlock - verify getTokenreturn - insufficient collateral - check user cr ratio after unlock. should increase cr ratio', async function () {
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await feedEthUsd.setPrice('200000000000') //$2000
+
+      let lptprice = await getOraclePriceForLPT(
+        ethDaiPair,
+        tDai.address,
+        feedEthUsd.address
+      )
+      lptprice = lptprice.toString() // $91.92
+
+      let currentCr = new BigNumber(lptprice)
+        .multipliedBy(collateral)
+        .multipliedBy(secondBase)
+        .dividedBy(debt)
+        .dividedBy(BASE)
+      console.log('current cr: ' + currentCr.toFixed())
+
+      expect(currentCr.isLessThan(CR)).to.equal(true, "Invalid CR ratio. Should be less then 200%") // insufficient collateral - 162%
+
+      let debtToBePaid = new BigNumber(debt).multipliedBy('0.05').toFixed(0) // 5%
+
+      // let collateralValue = (new BigNumber(lptprice).multipliedBy(collateral).multipliedBy(secondBase).dividedBy(CR).dividedBy(BASE)).toFixed()
+      // let remainingValue = (new BigNumber(debt).minus(collateralValue)).toFixed()
+      // let collateralToBeReceived;
+      
+      // if(new BigNumber(debtToBePaid).isLessThanOrEqualTo(remainingValue)){
+      //   collateralToBeReceived = 0;
+      // } else {
+      //   let remainingLoan = (new BigNumber(debtToBePaid).minus(remainingValue)).toFixed()
+      //   console.log("remainingLoan: " + remainingLoan)
+      //   collateralToBeReceived = (new BigNumber(CR).multipliedBy(remainingLoan).multipliedBy(BASE).dividedBy(lptprice).dividedBy(secondBase)).toFixed()
+      // }
+      // console.log("debtToBePaid: " + debtToBePaid)
+      // console.log("collateralValue: " + collateralValue)
+      // console.log("remainingValue: " + remainingValue)
+      // console.log("collateralToBeReceived: " + collateralToBeReceived)
+
+      let valueStart = (new BigNumber(lptprice).multipliedBy(collateral)).toFixed()
+      let loanAfter = (new BigNumber(debt).minus(debtToBePaid)).toFixed()
+      let valueAfter = (new BigNumber(CR).multipliedBy(loanAfter).multipliedBy(BASE).div(secondBase)).toFixed()
+      let collateralToBeReceived = ((new BigNumber(valueStart).minus(valueAfter)).div(lptprice)).toFixed()
+
+      if(new BigNumber(valueStart).isLessThan(valueAfter)){
+        collateralToBeReceived = "0"
+      }
+      console.log("debtToBePaid: " + debtToBePaid)
+      console.log("valueStart: " + valueStart)
+      console.log("loanAfter: " + loanAfter)
+      console.log("valueAfter: " + valueAfter)
+      console.log("collateralToBeReceived: " + collateralToBeReceived)
+
+
+      let burn = await ethDaiVault.unlock(debtToBePaid, collateralToBeReceived)
+
+      expect(burn)
+        .to.emit(ethDaiVault, 'Unlock')
+        .withArgs(signers[0].address, collateralToBeReceived, debtToBePaid)
+
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      let currentCr2 = new BigNumber(lptprice)
+        .multipliedBy(collateralAfter)
+        .multipliedBy(secondBase)
+        .dividedBy(debtAfter)
+        .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
+
+
+      expect(currentCr2.isGreaterThan(currentCr)).to.equal(
+        true,
+        'Invalid user cr ratio'
+      )
+    })
 
     it('unlock - verify getTokenreturn - sufficient collateral', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
@@ -2843,25 +3038,27 @@ describe('UniswapV2Vault', function () {
         .multipliedBy(secondBase)
         .dividedBy(debt)
         .dividedBy(BASE)
+      console.log("currentCr: " + currentCr)
 
       expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
 
       let debtToBePaid = new BigNumber(debt).multipliedBy('0.5').toFixed(0) // 50%
 
-      let totalCollateralvalueInUSd = new BigNumber(lptprice)
-        .multipliedBy(collateral)
-        .dividedBy(BASE)
-      let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
-      let collateralVaultAfter = remainingDebt
-        .multipliedBy(CR)
-        .dividedBy(secondBase)
-      let collateralTobeReceived = totalCollateralvalueInUSd
-        .minus(collateralVaultAfter)
-        .multipliedBy(BASE)
-        .dividedBy(lptprice)
-        .toFixed()
+      let collateralTobeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed()
 
       let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived)
+
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      let currentCr2 = new BigNumber(lptprice)
+      .multipliedBy(collateralAfter)
+      .multipliedBy(secondBase)
+      .dividedBy(debtAfter)
+      .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
 
       expect(burn)
         .to.emit(ethDaiVault, 'Unlock')
@@ -2888,25 +3085,29 @@ describe('UniswapV2Vault', function () {
         .multipliedBy(secondBase)
         .dividedBy(debt)
         .dividedBy(BASE)
+      console.log("currentCr: " + currentCr)
+      
 
       expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
 
       let debtToBePaid = new BigNumber(debt).multipliedBy('0.3').toFixed(0) // 30%
 
-      let totalCollateralvalueInUSd = new BigNumber(lptprice)
-        .multipliedBy(collateral)
-        .dividedBy(BASE)
-      let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
-      let collateralVaultAfter = remainingDebt
-        .multipliedBy(CR)
-        .dividedBy(secondBase)
-      let collateralTobeReceived = totalCollateralvalueInUSd
-        .minus(collateralVaultAfter)
-        .multipliedBy(BASE)
-        .dividedBy(lptprice)
-        .toFixed()
+      let collateralTobeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed()
 
       let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived)
+
+
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+      
+      let currentCr2 = new BigNumber(lptprice)
+      .multipliedBy(collateralAfter)
+      .multipliedBy(secondBase)
+      .dividedBy(debtAfter)
+      .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
 
       expect(burn)
         .to.emit(ethDaiVault, 'Unlock')
@@ -2933,23 +3134,14 @@ describe('UniswapV2Vault', function () {
         .multipliedBy(secondBase)
         .dividedBy(debt)
         .dividedBy(BASE)
+      console.log("currentCr: " + currentCr)
+      
 
       expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
 
       let debtToBePaid = new BigNumber(debt).multipliedBy('0.7').toFixed(0) // 70%
 
-      let totalCollateralvalueInUSd = new BigNumber(lptprice)
-        .multipliedBy(collateral)
-        .dividedBy(BASE)
-      let remainingDebt = new BigNumber(debt).minus(debtToBePaid)
-      let collateralVaultAfter = remainingDebt
-        .multipliedBy(CR)
-        .dividedBy(secondBase)
-      let collateralTobeReceived = totalCollateralvalueInUSd
-        .minus(collateralVaultAfter)
-        .multipliedBy(BASE)
-        .dividedBy(lptprice)
-        .toFixed()
+      let collateralTobeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed()
 
       let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived)
 
@@ -2969,15 +3161,76 @@ describe('UniswapV2Vault', function () {
         .multipliedBy(CR)
         .dividedBy(secondBase)
 
-      // console.log(remainingcollateralValueUSD.toFixed())
-      // console.log(requiredDebt.toFixed())
+      // console.log("remaining collateral value usd: "+remainingcollateralValueUSD.toFixed())
+      // console.log("remaining debt value usd: "+requiredDebt.toFixed())
 
+      
+      let currentCr2 = new BigNumber(lptprice)
+      .multipliedBy(collateralAfter)
+      .multipliedBy(secondBase)
+      .dividedBy(debtAfter)
+      .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
       expect(requiredDebt.isGreaterThan(remainingcollateralValueUSD)).to.equal(
         false,
         'Invalid remaining collateral value'
       )
     })
+
+    it('unlock - verify getTokenreturn - sufficient collateral - check user cr ratio after unlock. should greater then or equal to 200%', async function () {
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await feedEthUsd.setPrice('400000000000') //$4000
+
+      let lptprice = await getOraclePriceForLPT(
+        ethDaiPair,
+        tDai.address,
+        feedEthUsd.address
+      )
+      lptprice = lptprice.toString() // $127.2792
+
+      let currentCr = new BigNumber(lptprice)
+        .multipliedBy(collateral)
+        .multipliedBy(secondBase)
+        .dividedBy(debt)
+        .dividedBy(BASE)
+      console.log("currentCr: " + currentCr)
+
+      expect(Number(CR)).to.be.at.most(currentCr.toNumber()) // sufficient collateral - 225%
+
+      let debtToBePaid = new BigNumber(debt).multipliedBy('0.7').toFixed(0) // 70%
+
+      let collateralTobeReceived = (new BigNumber(collateral).multipliedBy(debtToBePaid).dividedBy(debt)).toFixed()
+
+      let burn = await ethDaiVault.unlock(debtToBePaid, collateralTobeReceived)
+
+      expect(burn)
+        .to.emit(ethDaiVault, 'Unlock')
+        .withArgs(signers[0].address, collateralTobeReceived, debtToBePaid)
+
+      let debtAfter = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateralAfter = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      let currentCr2 = new BigNumber(lptprice)
+        .multipliedBy(collateralAfter)
+        .multipliedBy(secondBase)
+        .dividedBy(debtAfter)
+        .dividedBy(BASE)
+      console.log('current cr2: ' + currentCr2.toFixed())
+
+      expect(currentCr2.isGreaterThanOrEqualTo(CR)).to.equal(
+        true,
+        'Invalid user cr ratio after unlock'
+      )
+    })
+
   })
+
 
   describe('#emergencyUnlock', async () => {
     beforeEach(async function () {
