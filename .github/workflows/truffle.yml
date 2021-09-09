@@ -5,9 +5,9 @@ name: truffle TestBot
 
 on:
   push:
-    branches: [ ft/cicd ]
+    branches: [ main ]
   pull_request:
-    branches: [ ft/cicd ]
+    branches: [ main ]
 
 jobs:
   build:
