@@ -90,7 +90,10 @@ contract UnboundVaultManager {
      * @notice Changes uToken mint limit
      * @param _uTokenMintLimit maximum uToken amount that can be minted. Set to 0 if limit is unlimited.
      */
-    function changeUTokenMintLimit(uint256 _uTokenMintLimit) external onlyGovernance {
+    function changeUTokenMintLimit(uint256 _uTokenMintLimit)
+        external
+        onlyGovernance
+    {
         uTokenMintLimit = _uTokenMintLimit;
         emit ChangeUTokenMintLimit(uTokenMintLimit);
     }
@@ -140,6 +143,14 @@ contract UnboundVaultManager {
         require(_stakeFee < SECOND_BASE);
         stakeFee = _stakeFee;
         emit ChangeStakeFee(_stakeFee);
+    }
+
+    /**
+     * @notice CHanges staking address
+     * @param _staking New staking address
+     */
+    function changeStaking(address _staking) external onlyGovernance {
+        staking = _staking;
     }
 
     /**
