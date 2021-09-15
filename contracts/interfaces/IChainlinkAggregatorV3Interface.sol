@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.0;
+pragma solidity >=0.7.6;
 
 interface IChainlinkAggregatorV3Interface {
     function decimals() external view returns (uint8);

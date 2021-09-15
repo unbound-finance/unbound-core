@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.0;
+pragma solidity >=0.7.6;
 
-import '@openzeppelin/contracts/security/Pausable.sol';
+import '@openzeppelin/contracts/utils/Pausable.sol';
 
 import './UniswapV2Vault.sol';
 // libraries
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+import '@openzeppelin/contracts/math/SafeMath.sol';
 
 // interfaces
 import '../interfaces/IERC20.sol';
