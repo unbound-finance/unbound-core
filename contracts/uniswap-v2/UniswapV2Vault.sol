@@ -338,11 +338,22 @@ contract UniswapV2Vault is UnboundVaultBase {
             IERC20(address(uToken)).balanceOf(msg.sender) >= debt[msg.sender],
             'BAL'
         );
+
+        // give the pool tokens back
         uint256 userDebt = debt[msg.sender];
         uint256 userCollateral = collateral[msg.sender];
+
+        // if the LP tokens are in yeild wallet, withdraw it first
+        if (yieldWalletDeposit[msg.sender] > 0) {
+            IUnboundYieldWallet(yieldWallet[msg.sender]).withdraw(
+                yieldWalletDeposit[msg.sender]
+            );
+            yieldWalletDeposit[msg.sender] = 0;
+        }
+
         collateral[msg.sender] = 0; // prevent getting the same amount again
-        burn(msg.sender, userDebt);
         pair.transfer(msg.sender, userCollateral);
+        burn(msg.sender, userDebt);
         emit Unlock(msg.sender, userCollateral, userDebt);
     }
 }
