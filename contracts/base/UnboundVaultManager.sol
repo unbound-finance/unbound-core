@@ -146,6 +146,14 @@ contract UnboundVaultManager {
     }
 
     /**
+     * @notice CHanges staking address
+     * @param _staking New staking address
+     */
+    function changeStaking(address _staking) external onlyGovernance {
+        staking = _staking;
+    }
+
+    /**
      * @notice Changes safuShare
      * @param _safuShare New fee. 1e8 is 100%
      */
