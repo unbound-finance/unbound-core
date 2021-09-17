@@ -19,10 +19,7 @@ import '../UnboundYieldWallet.sol';
 contract DefiEdgeVault is UnboundVaultBase {
     using SafeMath for uint256;
 
-    bool[] public isBase;
     uint256[] public decimals;
-    uint256 public maxPercentDiff;
-    uint256 public allowedDelay;
 
     IDefiEdgeStrategy public strategy;
 
@@ -34,24 +31,17 @@ contract DefiEdgeVault is UnboundVaultBase {
      * @param _uToken Address of the Unbound Token
      * @param _governance Address of the governance
      * @param _strategy Address of the defiedge strategy
-     * @param _stablecoin Address of the stablecoin
-     * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
-     * @param _allowedDelay Allowed delay for Chainlink price update, in Epoch secondss
      * @param _staking Address where the stake fees should be donated
      */
     constructor(
         address _uToken,
         address _governance,
         address _strategy,
-        address _stablecoin,
-        uint256 _maxPercentDiff,
-        uint256 _allowedDelay,
         address _staking
     ) {
         require(
             _uToken != address(0) &&
-                _strategy != address(0) &&
-                _stablecoin != address(0),
+                _strategy != address(0),
             'I'
         );
 
@@ -64,18 +54,6 @@ contract DefiEdgeVault is UnboundVaultBase {
         // decimals array
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
         decimals.push(uint256(IERC20(pair.token1()).decimals()));
-
-        bool isBase0;
-        bool isBase1;
-
-        pair.token0() == _stablecoin ? isBase0 = true : isBase1 = true;
-
-        // push to isBase
-        isBase.push(isBase0);
-        isBase.push(isBase1);
-
-        maxPercentDiff = _maxPercentDiff;
-        allowedDelay = _allowedDelay;
 
         staking = _staking;
 

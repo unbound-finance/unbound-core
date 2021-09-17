@@ -179,9 +179,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )
 
@@ -197,9 +194,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )
 
@@ -232,9 +226,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )
 
@@ -252,9 +243,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )
 
@@ -275,9 +263,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )
 
@@ -329,9 +314,6 @@ describe("DefiEdgeVaultFactory", function() {
                 und.address,
                 signers[0].address,
                 defiedgeStrategy.address,
-                tDai.address,
-                '900000000000000000', // 10%
-                5000,
                 signers[1].address
             )
         ).to.be.revertedWith("Pausable: paused");
@@ -357,9 +339,6 @@ describe("DefiEdgeVaultFactory", function() {
                 und.address,
                 signers[0].address,
                 defiedgeStrategy.address,
-                tDai.address,
-                '900000000000000000', // 10%
-                5000,
                 signers[1].address
             )
         ).to.be.revertedWith("Pausable: paused");
@@ -370,9 +349,6 @@ describe("DefiEdgeVaultFactory", function() {
             und.address,
             signers[0].address,
             defiedgeStrategy.address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
         )).to.emit(vaultFactory, "NewVault");
 

@@ -162,9 +162,6 @@ describe('DefiEdgeVault', function () {
       und.address,
       signers[0].address,
       defiedgeStrategy.address,
-      tDai.address,
-      '900000000000000000', // 10%
-      5000,
       signers[1].address
     )
 
@@ -218,30 +215,6 @@ describe('DefiEdgeVault', function () {
       expect(await ethDaiVault.decimals(1)).to.equal(token1Decimals)
     })
 
-    it('should set the isBase correctly', async function () {
-      let isBase0 = false
-      let isBase1 = false
-
-      let token0 = await ethDaiPool.token0()
-
-      if (token0.toLowerCase() == tDai.address.toLowerCase()) {
-        isBase0 = true
-      } else {
-        isBase1 = true
-      }
-
-      expect(await ethDaiVault.isBase(0)).to.equal(isBase0)
-      expect(await ethDaiVault.isBase(1)).to.equal(isBase1)
-    })
-
-    it('should set the maxPercentDiff correctly', async function () {
-      expect(await ethDaiVault.maxPercentDiff()).to.equal('900000000000000000')
-    })
-
-    it('should set the allowedDelay correctly', async function () {
-      expect(await ethDaiVault.allowedDelay()).to.equal('5000')
-    })
-
     it('should set the staking address correctly', async function () {
       expect(await ethDaiVault.staking()).to.equal(signers[1].address)
     })
@@ -256,9 +229,6 @@ describe('DefiEdgeVault', function () {
           zeroAddress,
           signers[0].address,
           defiedgeStrategy.address,
-          tDai.address,
-          '900000000000000000', // 10%
-          5000,
           signers[1].address
         )
       ).to.be.revertedWith('I')
@@ -269,22 +239,6 @@ describe('DefiEdgeVault', function () {
           und.address,
           signers[0].address,
           zeroAddress,
-          tDai.address,
-          '900000000000000000', // 10%
-          5000,
-          signers[1].address
-        )
-      ).to.be.revertedWith('I')
-    })
-    it('should revert if stablecoin address is zero while creating vault', async function () {
-      await expect(
-        vaultFactory.createVault(
-          und.address,
-          signers[0].address,
-          defiedgeStrategy.address,
-          zeroAddress,
-          '900000000000000000', // 10%
-          5000,
           signers[1].address
         )
       ).to.be.revertedWith('I')
@@ -296,9 +250,6 @@ describe('DefiEdgeVault', function () {
             und.address,
             signers[0].address,
             signers[1].address,
-            tDai.address,
-            '900000000000000000', // 10%
-            5000,
             signers[1].address
           )
         ).to.be.reverted;
@@ -2301,7 +2252,7 @@ describe('DefiEdgeVault', function () {
       )
     })
 
-    it('unlock - verify getTokenreturn - insufficient collateral - check user cr ratio after unlock. should increase cr ratio', async function () {
+    it('unlock - verify getTokenreturn - insufficient collateral - check user cr ratio after unlock. cr ratio shoul be same', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (
         await ethDaiVault.collateral(signers[0].address)
@@ -2359,7 +2310,7 @@ describe('DefiEdgeVault', function () {
       console.log('current cr2: ' + currentCr2.toFixed(0))
 
 
-      expect(currentCr2.isGreaterThan(currentCr)).to.equal(
+      expect(currentCr2.isEqualTo(currentCr)).to.equal(
         true,
         'Invalid user cr ratio'
       )

@@ -44,18 +44,12 @@ contract DefiEdgeVaultFactory is Pausable {
      * @param _uToken Address of the Unbound Token
      * @param _governance Address of the governance
      * @param _strategy Address of the defiedge strategy
-     * @param _stablecoin Address of the stablecoin
-     * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
-     * @param _allowedDelay Allowed delay for Chainlink price update
      * @param _staking Address where the stake fees should be donated
      */
     function createVault(
         address _uToken,
         address _governance,
         address _strategy,
-        address _stablecoin,
-        uint256 _maxPercentDiff,
-        uint256 _allowedDelay,
         address _staking
     ) external whenNotPaused returns (address vault) {
         vault = address(
@@ -63,9 +57,6 @@ contract DefiEdgeVaultFactory is Pausable {
                 _uToken,
                 _governance,
                 _strategy,
-                _stablecoin,
-                _maxPercentDiff,
-                _allowedDelay,
                 _staking
             )
         );
