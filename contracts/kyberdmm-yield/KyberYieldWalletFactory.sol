@@ -28,7 +28,7 @@ contract KyberYieldWalletFactory is Ownable {
         address _user,
         address _vault
     ) external returns (address wallet) {
-        wallet = address(new DMMYieldWallet(_pair, _user, _vault, farmingContract, pids[_pair]));
+        wallet = address(new KyberYieldWallet(_pair, _user, _vault, farmingContract, pids[_pair]));
         emit YeildWalletFactory(wallet);
     }
 
