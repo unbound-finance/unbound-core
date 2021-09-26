@@ -3,14 +3,14 @@ pragma solidity >=0.7.6;
 
 import '@openzeppelin/contracts/utils/Pausable.sol';
 
-import './UniswapV2Vault.sol';
+import './DefiEdgeVault.sol';
 // libraries
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
 // interfaces
 import '../interfaces/IERC20.sol';
 
-contract UniswapV2VaultFactory is Pausable {
+contract DefiEdgeVaultFactory is Pausable {
     mapping(address => bool) public allowed;
     mapping(address => bool) public vaults;
 
@@ -18,8 +18,6 @@ contract UniswapV2VaultFactory is Pausable {
     address public pendingGovernance;
 
     uint256 public index;
-
-    address public uniswapFactory;
 
     mapping(uint256 => address) public vaultByIndex;
 
@@ -36,45 +34,30 @@ contract UniswapV2VaultFactory is Pausable {
 
     /**
      * @param _governance Address of the governance
-     * @param _factory Address of the uniswap factory contract
      */
-    constructor(address _governance, address _factory) {
+    constructor(address _governance) {
         governance = _governance;
-        uniswapFactory = _factory;
     }
 
     /**
      * @notice Creates new vault
      * @param _uToken Address of the Unbound Token
      * @param _governance Address of the governance
-     * @param _pair Address of the pool token
-     * @param _stablecoin Address of the stablecoin
-     * @param _feeds Array of the chainlink feeds to get weighed asset
-     * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
-     * @param _allowedDelay Allowed delay for Chainlink price update
+     * @param _strategy Address of the defiedge strategy
      * @param _staking Address where the stake fees should be donated
      */
     function createVault(
         address _uToken,
         address _governance,
-        address _pair,
-        address _stablecoin,
-        address[] memory _feeds,
-        uint256 _maxPercentDiff,
-        uint256 _allowedDelay,
+        address _strategy,
         address _staking
     ) external whenNotPaused returns (address vault) {
         vault = address(
-            new UniswapV2Vault(
+            new DefiEdgeVault(
                 _uToken,
                 _governance,
-                _pair,
-                _stablecoin,
-                _feeds,
-                _maxPercentDiff,
-                _allowedDelay,
-                _staking,
-                uniswapFactory
+                _strategy,
+                _staking
             )
         );
         index = index + 1;
