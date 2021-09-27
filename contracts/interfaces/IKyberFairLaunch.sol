@@ -3,6 +3,47 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 interface IKyberFairLaunch {
+  /**
+   * @dev Add a new lp to the pool. Can only be called by the admin.
+   * @param _stakeToken: token to be staked to the pool
+   * @param _startBlock: block where the reward starts
+   * @param _endBlock: block where the reward ends
+   * @param _rewardPerBlocks: amount of reward token per block for the pool
+   */
+  function addPool(
+    address _stakeToken,
+    uint32 _startBlock,
+    uint32 _endBlock,
+    uint256[] calldata _rewardPerBlocks
+  ) external;
+
+  /**
+   * @dev Renew a pool to start another liquidity mining program
+   * @param _pid: id of the pool to renew, must be pool that has not started or already ended
+   * @param _startBlock: block where the reward starts
+   * @param _endBlock: block where the reward ends
+   * @param _rewardPerBlocks: amount of reward token per block for the pool
+   *   0 if we want to stop the pool from accumulating rewards
+   */
+  function renewPool(
+    uint256 _pid,
+    uint32 _startBlock,
+    uint32 _endBlock,
+    uint256[] calldata _rewardPerBlocks
+  ) external;
+
+  /**
+   * @dev Update a pool, allow to change end block, reward per block
+   * @param _pid: pool id to be renew
+   * @param _endBlock: block where the reward ends
+   * @param _rewardPerBlocks: amount of reward token per block for the pool
+   *   0 if we want to stop the pool from accumulating rewards
+   */
+  function updatePool(
+    uint256 _pid,
+    uint32 _endBlock,
+    uint256[] calldata _rewardPerBlocks
+  ) external;
 
   /**
    * @dev deposit to tokens to accumulate rewards
@@ -41,14 +82,24 @@ interface IKyberFairLaunch {
    * @param _pid: id of the pool
    */
   function harvest(uint256 _pid) external;
-  
+
+  /**
+   * @dev harvest rewards from multiple pools for the sender
+   */
+  function harvestMultiplePools(uint256[] calldata _pids) external;
+
+  /**
+   * @dev update reward for one pool
+   */
+  function updatePoolRewards(uint256 _pid) external;
+
   /**
    * @dev return the total of pools that have been added
    */
   function poolLength() external view returns (uint256);
 
   /**
-   * @dev return reward locker contract address
+   * @dev return tcontract address of reward locker
    */
   function rewardLocker() external view returns (address);
 
