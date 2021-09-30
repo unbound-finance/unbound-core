@@ -142,7 +142,6 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
             IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _farming,
                 _amount
             );
         }
@@ -188,7 +187,6 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
             IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _farming,
                 _amount
             );
         }
