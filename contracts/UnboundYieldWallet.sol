@@ -31,7 +31,7 @@ contract UnboundYieldWallet {
     /**
      * @notice Deposits the LP tokens
      */
-    function deposit(address _contract, uint256 _amount) external onlyVault {}
+    function deposit(uint256 _amount) external onlyVault {}
 
     /**
      * @notice Withdraw LP tokens

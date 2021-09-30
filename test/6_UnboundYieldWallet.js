@@ -206,7 +206,7 @@ describe('UnboundYieldWallet', function () {
       )
 
       await expect(
-        yieldwallet.deposit(yieldWalletFactory.address, lockAmount)
+        yieldwallet.deposit(lockAmount)
       ).to.be.revertedWith('NA')
     })
 
