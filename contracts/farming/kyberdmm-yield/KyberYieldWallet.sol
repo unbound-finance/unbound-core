@@ -5,8 +5,8 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 //interface
-import "../interfaces/IKyberRewardLocker.sol";
-import "../interfaces/IKyberFairLaunch.sol";
+import "../../interfaces/IKyberRewardLocker.sol";
+import "../../interfaces/IKyberFairLaunch.sol";
 
 
 contract KyberYieldWallet{
