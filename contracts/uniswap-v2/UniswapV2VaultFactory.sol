@@ -24,6 +24,7 @@ contract UniswapV2VaultFactory is Pausable {
     mapping(uint256 => address) public vaultByIndex;
 
     mapping(address => uint256) public disableDates;
+    mapping(address => uint256) public enableDates;
 
     event NewVault(address _vault, uint256 _index);
     event ChangeGovernance(address _governance);
@@ -90,9 +91,18 @@ contract UniswapV2VaultFactory is Pausable {
      * @param _vault Address of the vault to enable
      */
     function enableVault(address _vault) external onlyGovernance {
-        require(vaults[_vault]);
-        allowed[_vault] = true;
+        enableDates[_vault] = block.timestamp;
         emit EnableVault(_vault);
+    }
+
+    /**
+     * @notice Executes enable vault function
+     * @param _vault Address of the vault
+     */
+    function executeEnableVault(address _vault) external {
+        require(enableDates[_vault] != 0, 'ID');
+        require(enableDates[_vault] + 3 days < block.timestamp, 'WD');
+        allowed[_vault] = true;
     }
 
     /**
