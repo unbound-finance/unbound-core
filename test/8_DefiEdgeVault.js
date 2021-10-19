@@ -87,7 +87,7 @@ describe('DefiEdgeVault', function () {
 
     // deploy strategy factory
     let DefiEdgeStrategyFactory = await ethers.getContractFactory("DefiEdgeStrategyFactory");
-    defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address);
+    defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address, uniswapV3Factory.address);
 
     // create strategy
     await defiedgeStrategyFactory.createStrategy(ethDaiPool.address, signers[0].address, [
@@ -2307,11 +2307,11 @@ describe('DefiEdgeVault', function () {
         .multipliedBy(secondBase)
         .dividedBy(debtAfter)
         .dividedBy(BASE)
-      console.log('current cr2: ' + currentCr2.toFixed(0))
+      console.log('current cr2: ' + currentCr2.toFixed())
 
 
-      expect(currentCr2.isEqualTo(currentCr)).to.equal(
-        true,
+      expect(currentCr2.toFixed(0)).to.equal(
+        currentCr.toFixed(0),
         'Invalid user cr ratio'
       )
     })

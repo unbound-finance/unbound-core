@@ -13,7 +13,7 @@ interface IDefiEdgeStrategy {
     function pool() external view returns (address);
 
     // Get total amounts0 and amounts1 of strategy pool
-    function getAUMWithFees() external returns (uint256 amount0, uint256 amount1);
+    function getAUMWithFees() external returns (uint256 amount0, uint256 amount1, uint256 totalFee0, uint256 totalFee1);
 
     /**
      * @dev Moves `amount` tokens from the caller's account to `recipient`.

@@ -46,7 +46,7 @@ library DefiEdgeSharePriceProvider {
 
         IDefiEdgeStrategy strategy = IDefiEdgeStrategy(_strategy);
 
-        (uint256 reserve0, uint256 reserve1) = strategy.getAUMWithFees();
+        (uint256 reserve0, uint256 reserve1,,) = strategy.getAUMWithFees();
 
         uint256 reserve0Normalised = normalise(reserve0, _decimals[0]);
         uint256 reserve1Normalised = normalise(reserve1, _decimals[1]);
