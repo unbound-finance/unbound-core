@@ -65,11 +65,7 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
      * @param _account Address to burn tokens from
      * @param _amount Amount of tokens to be burned
      */
-    function burn(address _account, uint256 _amount)
-        external
-        whenNotPaused
-        validMinter
-    {
+    function burn(address _account, uint256 _amount) external validMinter {
         _burn(_account, _amount);
     }
 
