@@ -4,12 +4,12 @@ pragma solidity >=0.4.23 <=0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
-contract TestEth is IERC20 {
+contract TestToken is IERC20 {
     using SafeMath for uint256;
 
-    string public constant name = "TestEth";
-    string public constant symbol = "TETH";
-    uint8 public constant decimals = 18;
+    string public name;
+    string public symbol;
+    uint8 public decimals;
     uint256 public override totalSupply;
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
@@ -17,9 +17,11 @@ contract TestEth is IERC20 {
     // event Approval(address indexed owner, address indexed spender, uint value);
     // event Transfer(address indexed from, address indexed to, uint value);
 
-    constructor(address tester) {
-        _mint(msg.sender, 1000000000000 * (10**decimals));
-        _mint(tester, 1000000000000 * (10**decimals));
+    constructor(string memory _name, string memory _symbol, uint8 _decimals, address tester) {
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+        _mint(tester, 2000000000000 * (10**decimals));
     }
 
     function _mint(address to, uint256 value) public {
