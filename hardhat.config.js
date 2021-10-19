@@ -28,6 +28,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      allowUnlimitedContractSize: true,
       accounts: {
         mnemonic: "anxiety false usage noble consider few decline improve robust behave peasant put"
       }
