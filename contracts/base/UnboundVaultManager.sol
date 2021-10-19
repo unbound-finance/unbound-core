@@ -71,7 +71,7 @@ contract UnboundVaultManager {
     }
 
     // government and manager both can call
-    modifier governanceAndManager() {
+    modifier governanceOrManager() {
         require(msg.sender == manager || msg.sender == governance, 'NA');
         _;
     }
@@ -102,7 +102,7 @@ contract UnboundVaultManager {
      * @notice Changes collatralization ratio
      * @param _CR New ratio to set 1e8 is 100%
      */
-    function changeCR(uint256 _CR) external governanceAndManager {
+    function changeCR(uint256 _CR) external governanceOrManager {
         CR = _CR;
         emit ChangeCR(_CR);
     }
@@ -111,7 +111,7 @@ contract UnboundVaultManager {
      * @notice Changes loan to value ratio
      * @param _LTV New loan to value ratio, 1e8 is 100%
      */
-    function changeLTV(uint256 _LTV) external governanceAndManager {
+    function changeLTV(uint256 _LTV) external governanceOrManager {
         require(_LTV <= SECOND_BASE);
         LTV = _LTV;
         emit ChangeLTV(_LTV);
