@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.0;
+pragma solidity >=0.7.6;
 
 // import libraries
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+import '@openzeppelin/contracts/math/SafeMath.sol';
 import '../libraries/UniswapV2PriceProvider.sol';
 
 //  import interfaces
@@ -142,7 +142,6 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
             IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _farming,
                 _amount
             );
         }
@@ -188,7 +187,6 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
             IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _farming,
                 _amount
             );
         }

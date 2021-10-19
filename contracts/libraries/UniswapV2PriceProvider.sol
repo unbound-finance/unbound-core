@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.0;
+pragma solidity >=0.7.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+import '@openzeppelin/contracts/math/SafeMath.sol';
 
 import '../interfaces/IChainlinkAggregatorV3Interface.sol';
 
