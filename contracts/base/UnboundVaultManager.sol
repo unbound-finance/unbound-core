@@ -204,7 +204,7 @@ contract UnboundVaultManager {
      * @notice Distributes the fee collected to the contract
      */
     function distributeFee() external {
-        // check if safu and team is initialized properly
+        // check if safu is initialized properly
         require((safu != address(0)) && (safuShare > 0), 'INVALID');
         uint256 amount = uToken.balanceOf(address(this));
 
