@@ -103,6 +103,7 @@ contract UnboundVaultManager {
      * @param _CR New ratio to set 1e8 is 100%
      */
     function changeCR(uint256 _CR) external governanceOrManager {
+        require(CR <= SECOND_BASE, 'IN');
         CR = _CR;
         emit ChangeCR(_CR);
     }
