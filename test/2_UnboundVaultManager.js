@@ -462,7 +462,7 @@ describe("UnboundVaultManager", function() {
 
             let distribute = await ethDaiVault.distributeFee()
 
-            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "109601551083914866"); // 60% of vault balance
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "109601551083914866"); // 40% of vault balance
 
 
             expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("164402326625872299") // 60% remaining in contract balance
