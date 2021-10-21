@@ -18,8 +18,8 @@ import '../interfaces/IUnboundToken.sol';
 contract UnboundVaultManager {
     using SafeMath for uint256;
 
-    uint256 BASE = uint256(1e18);
-    uint256 SECOND_BASE = uint256(1e8);
+    uint256 BASE = uint256(1e18); // used to normalise the value to 1e18 format
+    uint256 SECOND_BASE = uint256(1e8); // act as base decimals for LTV and CR
 
     address public factory; // address of vault factory
     IUniswapV2Pair public pair; // address of liquidity pool token
@@ -67,6 +67,11 @@ contract UnboundVaultManager {
     // checks if governance is calling
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
+        _;
+    }
+
+    modifier validAddress(address _address) {
+        require(_address != address(0), 'IA');
         _;
     }
 
@@ -122,7 +127,11 @@ contract UnboundVaultManager {
      * @notice Changes address where the fees should be received
      * @param _team New fee to address
      */
-    function changeTeamFeeAddress(address _team) external onlyGovernance {
+    function changeTeamFeeAddress(address _team)
+        external
+        onlyGovernance
+        validAddress(_team)
+    {
         team = _team;
     }
 
@@ -150,7 +159,11 @@ contract UnboundVaultManager {
      * @notice CHanges staking address
      * @param _staking New staking address
      */
-    function changeStaking(address _staking) external onlyGovernance {
+    function changeStaking(address _staking)
+        external
+        onlyGovernance
+        validAddress(_staking)
+    {
         staking = _staking;
     }
 
@@ -178,7 +191,11 @@ contract UnboundVaultManager {
      * @notice Change governance address
      * @param _governance New governance address
      */
-    function changeGovernance(address _governance) external onlyGovernance {
+    function changeGovernance(address _governance)
+        external
+        onlyGovernance
+        validAddress(_governance)
+    {
         pendingGovernance = _governance;
         emit ChangeGovernance(_governance);
     }
@@ -195,7 +212,11 @@ contract UnboundVaultManager {
      * @notice Change manager, managers can manage LTV and CR
      * @notice _manager Address of the manager
      */
-    function changeManager(address _manager) external onlyGovernance {
+    function changeManager(address _manager)
+        external
+        onlyGovernance
+        validAddress(_manager)
+    {
         manager = _manager;
         emit ChangeManager(_manager);
     }

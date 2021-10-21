@@ -128,7 +128,11 @@ contract UniswapV2VaultFactory is Pausable {
      * @notice Changes governnance via two step process
      * @param _governance Address of the new governance
      */
-    function changeGovernance(address _governance) external onlyGovernance {
+    function changeGovernance(address _governance)
+        external
+        onlyGovernance
+        validAddress(_governance)
+    {
         pendingGovernance = _governance;
         emit ChangeGovernance(_governance);
     }

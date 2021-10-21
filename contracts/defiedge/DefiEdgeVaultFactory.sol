@@ -29,6 +29,11 @@ contract DefiEdgeVaultFactory is Pausable {
     event EnableVault(address _vault);
     event DisableVault(address _vault);
 
+    modifier validAddress(address _address) {
+        require(_address != address(0), 'IA');
+        _;
+    }
+
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
         _;
@@ -105,7 +110,11 @@ contract DefiEdgeVaultFactory is Pausable {
      * @notice Changes governnance via two step process
      * @param _governance Address of the new governance
      */
-    function changeGovernance(address _governance) external onlyGovernance {
+    function changeGovernance(address _governance)
+        external
+        onlyGovernance
+        validAddress(_governance)
+    {
         pendingGovernance = _governance;
         emit ChangeGovernance(_governance);
     }
