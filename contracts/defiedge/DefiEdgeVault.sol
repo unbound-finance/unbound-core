@@ -44,6 +44,8 @@ contract DefiEdgeVault is UnboundVaultBase {
         strategy = IDefiEdgeStrategy(_strategy);
         pair = IUniswapV2Pair(strategy.pool());
 
+        require(strategy.decimals() == 18, 'ID');
+
         // decimals array
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
         decimals.push(uint256(IERC20(pair.token1()).decimals()));

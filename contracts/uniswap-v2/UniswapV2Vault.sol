@@ -60,6 +60,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
 
+        require(pair.decimals() == 18, 'ID');
+
         // verify validity of the pool
         require(
             IUniswapV2Factory(_uniswapFactory).getPair(
