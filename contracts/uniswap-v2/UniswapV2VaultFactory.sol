@@ -28,9 +28,15 @@ contract UniswapV2VaultFactory is Pausable {
 
     event NewVault(address _vault, uint256 _index);
     event ChangeGovernance(address _governance);
+    event AcceptGovernance(address _governance);
 
     event EnableVault(address _vault);
     event DisableVault(address _vault);
+
+    modifier validAddress(address _address) {
+        require(_address != address(0), 'IA');
+        _;
+    }
 
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
@@ -143,6 +149,7 @@ contract UniswapV2VaultFactory is Pausable {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+        emit AcceptGovernance(governance);
     }
 
     /**

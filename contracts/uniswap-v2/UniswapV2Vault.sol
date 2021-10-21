@@ -13,8 +13,6 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 // contracts
 import '../base/UnboundVaultBase.sol';
 
-import '../UnboundYieldWallet.sol';
-
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
 

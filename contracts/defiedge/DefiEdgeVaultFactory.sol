@@ -25,6 +25,7 @@ contract DefiEdgeVaultFactory is Pausable {
 
     event NewVault(address _vault, uint256 _index);
     event ChangeGovernance(address _governance);
+    event AcceptGovernance(address _governance);
 
     event EnableVault(address _vault);
     event DisableVault(address _vault);
@@ -125,6 +126,7 @@ contract DefiEdgeVaultFactory is Pausable {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+        emit AcceptGovernance(governance);
     }
 
     /**

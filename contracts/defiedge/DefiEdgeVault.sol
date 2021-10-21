@@ -14,8 +14,6 @@ import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 // contracts
 import '../base/UnboundVaultBase.sol';
 
-import '../UnboundYieldWallet.sol';
-
 contract DefiEdgeVault is UnboundVaultBase {
     using SafeMath for uint256;
 

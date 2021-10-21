@@ -60,9 +60,13 @@ contract UnboundVaultManager {
     event ChangeProtocolFee(uint256 _PROTOCOL_FEE);
     event ChangeSafuShare(uint256 _safuShare);
 
+    event ChangeTeamFeeAddress(address _team);
+    event ChangeStaking(address _staking);
+    event DistributeFee(uint256 _team, uint256 _safu);
+
     event EnableYieldFactory(address _factory);
     event DisableYieldFactory(address _factory);
-    event ClaimTokens(address _token, uint256 _amount);
+    event ClaimTokens(address _token, address _to, uint256 _amount);
 
     // checks if governance is calling
     modifier onlyGovernance() {
@@ -89,6 +93,7 @@ contract UnboundVaultManager {
     function claim(address _token, address _to) external onlyGovernance {
         require(address(pair) != _token && address(uToken) != _token);
         IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
+        emit ClaimTokens(_token, _to, IERC20(_token).balanceOf(address(this)));
     }
 
     /**
@@ -133,6 +138,7 @@ contract UnboundVaultManager {
         validAddress(_team)
     {
         team = _team;
+        emit ChangeTeamFeeAddress(_team);
     }
 
     /**
@@ -165,6 +171,7 @@ contract UnboundVaultManager {
         validAddress(_staking)
     {
         staking = _staking;
+        emit ChangeStaking(_staking);
     }
 
     /**
