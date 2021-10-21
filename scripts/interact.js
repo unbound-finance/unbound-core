@@ -8,7 +8,7 @@ async function main() {
    *
    */
 
-  const GOVERNANCE = ''
+  const GOVERNANCE = '0xf7Aa7e6C820e13295499ef99467835dda41dA5d1'
 
   /**
    *
