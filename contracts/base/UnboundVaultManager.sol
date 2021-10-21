@@ -62,7 +62,7 @@ contract UnboundVaultManager {
 
     event ChangeTeamFeeAddress(address _team);
     event ChangeStaking(address _staking);
-    event DistributeFee(uint256 _team, uint256 _safu);
+    event DistributeFee(uint256 _amount);
 
     event EnableYieldFactory(address _factory);
     event DisableYieldFactory(address _factory);
@@ -247,8 +247,10 @@ contract UnboundVaultManager {
             );
         } else {
             // transfer the whole to safu
-            uToken.transfer(safu, amount.mul(safuShare).div(SECOND_BASE));
+            uToken.transfer(safu, amount);
         }
+
+        emit DistributeFee(amount);
     }
 
     /**
