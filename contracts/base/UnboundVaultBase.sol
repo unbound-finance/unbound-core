@@ -72,6 +72,7 @@ contract UnboundVaultBase is UnboundVaultManager {
      * @param _amount Amount to be burned
      */
     function burn(address _account, uint256 _amount) internal {
+        uTokenMinted = uTokenMinted.sub(_amount);
         uToken.burn(_account, _amount);
         debt[_account] = debt[_account].sub(_amount);
     }
