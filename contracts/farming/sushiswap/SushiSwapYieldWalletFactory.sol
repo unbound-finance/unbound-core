@@ -6,14 +6,14 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import './SushiSwapYieldWallet.sol';
 
 contract SushiSwapYieldWalletFactory is Ownable {
-
     address public farmingContract; // MasterChef contract address where LPTs will be staked
 
-    mapping (address => uint256) public pids; // stakig token => pid mapping
+    mapping(address => uint256) public pids; // stakig token => pid mapping
 
     event YeildWalletFactory(address _wallet);
+    event SetPids(address[] _stakingTokens, uint256[] _pids);
 
-    constructor (address _farming) {
+    constructor(address _farming) {
         farmingContract = _farming;
     }
 
@@ -28,7 +28,15 @@ contract SushiSwapYieldWalletFactory is Ownable {
         address _user,
         address _vault
     ) external returns (address wallet) {
-        wallet = address(new SushiSwapYieldWallet(_pair, _user, _vault, farmingContract, pids[_pair]));
+        wallet = address(
+            new SushiSwapYieldWallet(
+                _pair,
+                _user,
+                _vault,
+                farmingContract,
+                pids[_pair]
+            )
+        );
         emit YeildWalletFactory(wallet);
     }
 
@@ -37,11 +45,16 @@ contract SushiSwapYieldWalletFactory is Ownable {
      * @param _stakingTokens Array of pair addresses
      * @param _pids Array of pid of the pair addresses
      */
-    function setPids(address[] memory _stakingTokens, uint256[] memory _pids) external onlyOwner{
-        require(_stakingTokens.length == _pids.length, "IA");
+    function setPids(address[] memory _stakingTokens, uint256[] memory _pids)
+        external
+        onlyOwner
+    {
+        require(_stakingTokens.length == _pids.length, 'IA');
 
-        for(uint256 id = 0; id < _pids.length; id++){
+        for (uint256 id = 0; id < _pids.length; id++) {
             pids[_stakingTokens[id]] = _pids[id];
         }
+
+        emit SetPids(_stakingTokens, _pids);
     }
 }

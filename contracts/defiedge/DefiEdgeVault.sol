@@ -9,12 +9,10 @@ import '../libraries/DefiEdgeSharePriceProvider.sol';
 import '../interfaces/IUnboundYieldWallet.sol';
 import '../interfaces/IUnboundYieldWalletFactory.sol';
 import '../interfaces/IDefiEdgeStrategy.sol';
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
 // contracts
 import '../base/UnboundVaultBase.sol';
-
-import '../UnboundYieldWallet.sol';
 
 contract DefiEdgeVault is UnboundVaultBase {
     using SafeMath for uint256;
@@ -39,17 +37,14 @@ contract DefiEdgeVault is UnboundVaultBase {
         address _strategy,
         address _staking
     ) {
-        require(
-            _uToken != address(0) &&
-                _strategy != address(0),
-            'I'
-        );
-
+        require(_uToken != address(0) && _strategy != address(0), 'I');
 
         uToken = IUnboundToken(_uToken);
         governance = _governance;
         strategy = IDefiEdgeStrategy(_strategy);
         pair = IUniswapV2Pair(strategy.pool());
+
+        require(strategy.decimals() == 18, 'ID');
 
         // decimals array
         decimals.push(uint256(IERC20(pair.token0()).decimals()));
@@ -93,7 +88,10 @@ contract DefiEdgeVault is UnboundVaultBase {
         require(strategy.balanceOf(msg.sender) >= _amount, 'BAL');
 
         // transfer tokens to the vault contract
-        require(strategy.transferFrom(msg.sender, address(this), _amount), 'TF');
+        require(
+            strategy.transferFrom(msg.sender, address(this), _amount),
+            'TF'
+        );
 
         // get price of pool token from oracle
         uint256 price = DefiEdgeSharePriceProvider.getSharePrice(
@@ -111,7 +109,6 @@ contract DefiEdgeVault is UnboundVaultBase {
         (amount) = mint(msg.sender, amount, _mintTo);
 
         require(_minUTokenAmount <= amount, 'MIN');
-
     }
 
     /**
@@ -171,13 +168,12 @@ contract DefiEdgeVault is UnboundVaultBase {
             uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
             uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
             uint256 valueAfter = (CR.mul(loanAfter).mul(BASE)).div(SECOND_BASE);
-            
-            if(valueStart < valueAfter){
+
+            if (valueStart < valueAfter) {
                 amount = 0;
             } else {
                 amount = valueStart.sub(valueAfter).div(uint256(price));
-            }        
-
+            }
         } else {
             // enough collateral
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(

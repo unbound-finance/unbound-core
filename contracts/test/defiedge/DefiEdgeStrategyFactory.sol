@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL
 
 pragma solidity =0.7.6;
 pragma abicoder v2;
@@ -27,23 +27,20 @@ contract DefiEdgeStrategyFactory {
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
-    // mapping of whitelisted pools
-    mapping(address => bool) public whitelistedPools;
+    address public uniswapV3Factory;
 
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
 
     // Modifiers
     modifier onlyGovernance() {
-        require(
-            msg.sender == governance,
-            "Ownable: caller is not the governance"
-        );
+        require(msg.sender == governance, "NO");
         _;
     }
 
-    constructor(address _governance) {
+    constructor(address _governance, address _uniswapV3factory) {
         governance = _governance;
+        uniswapV3Factory = _uniswapV3factory;
     }
 
     /**
@@ -70,7 +67,7 @@ contract DefiEdgeStrategyFactory {
      * @notice Changes protocol fees
      * @param _fee New fee in 1e8 format
      */
-    function changeProtocolFee(uint256 _fee) external onlyGovernance {
+    function changeFee(uint256 _fee) external onlyGovernance {
         PROTOCOL_FEE = _fee;
     }
 
@@ -87,7 +84,7 @@ contract DefiEdgeStrategyFactory {
      * @param _governance Address of the new governance
      */
     function changeGovernance(address _governance) external onlyGovernance {
-        require(_governance != address(0), "invalid operator");
+        require(_governance != address(0));
         pendingGovernance = _governance;
     }
 
@@ -95,7 +92,7 @@ contract DefiEdgeStrategyFactory {
      * @notice Change the operator
      */
     function acceptGovernance() external {
-        require(msg.sender == pendingGovernance, "invalid match");
+        require(msg.sender == pendingGovernance);
         governance = pendingGovernance;
     }
 
@@ -103,15 +100,11 @@ contract DefiEdgeStrategyFactory {
      * @notice Adds strategy to Denylist, rebalance and add liquidity will be stopped
      * @param _strategy Address of the strategy
      */
-    function deny(address _strategy) external onlyGovernance() {
-        denied[_strategy] = true;
-    }
-
-    /**
-     * @notice Allows strategy to operate again
-     * @param _strategy Address of the strategy
-     */
-    function allowAgain(address _strategy) external onlyGovernance() {
-        denied[_strategy] = false;
+    function deny(address _strategy) external onlyGovernance {
+        if (denied[_strategy]) {
+            denied[_strategy] = false;
+        } else {
+            denied[_strategy] = true;
+        }
     }
 }

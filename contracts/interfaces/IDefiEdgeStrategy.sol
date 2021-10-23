@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 interface IDefiEdgeStrategy {
+    function decimals() external view returns (uint256);
 
     // Return user balance of share
     function balanceOf(address account) external view returns (uint256);
@@ -13,7 +14,14 @@ interface IDefiEdgeStrategy {
     function pool() external view returns (address);
 
     // Get total amounts0 and amounts1 of strategy pool
-    function getAUMWithFees() external returns (uint256 amount0, uint256 amount1);
+    function getAUMWithFees()
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 totalFee0,
+            uint256 totalFee1
+        );
 
     /**
      * @dev Moves `amount` tokens from the caller's account to `recipient`.
@@ -22,7 +30,9 @@ interface IDefiEdgeStrategy {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /**
      * @dev Moves `amount` tokens from `sender` to `recipient` using the

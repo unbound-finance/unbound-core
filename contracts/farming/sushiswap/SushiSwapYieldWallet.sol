@@ -2,13 +2,12 @@
 pragma solidity >=0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 //interface
-import "../../interfaces/IMasterChefSushi.sol";
+import '../../interfaces/IMasterChefSushi.sol';
 
-contract SushiSwapYieldWallet{
-
+contract SushiSwapYieldWallet {
     using SafeERC20 for IERC20;
 
     address public pair;
@@ -20,8 +19,10 @@ contract SushiSwapYieldWallet{
 
     IERC20 public rewardToken; // Reward token instance;
 
-
     mapping(address => bool) allowed;
+
+    event Claim(address _token, address _to, uint256 _amount);
+    event Deposit(uint256 _pid, uint256 _amount);
 
     modifier onlyVault() {
         require(msg.sender == vault, 'NA');
@@ -40,11 +41,11 @@ contract SushiSwapYieldWallet{
         address _farming,
         uint256 _pid
     ) {
+        IMasterChefSushi.PoolInfo memory pool = IMasterChefSushi(_farming)
+            .poolInfo(_pid);
 
-        IMasterChefSushi.PoolInfo memory pool =  IMasterChefSushi(_farming).poolInfo(_pid);
+        require(address(pool.lpToken) == _pair, 'IP');
 
-        require(address(pool.lpToken) == _pair, "IP");
-    
         pair = _pair;
         user = _user;
         vault = _vault;
@@ -63,9 +64,14 @@ contract SushiSwapYieldWallet{
      */
     function deposit(uint256 _amount) external onlyVault {
         IMasterChefSushi(farming).deposit(pid, _amount);
-        if (rewardToken.balanceOf(address(this)) > 0){
-            _withdrawFunds(rewardToken, user, rewardToken.balanceOf(address(this)));
+        if (rewardToken.balanceOf(address(this)) > 0) {
+            _withdrawFunds(
+                rewardToken,
+                user,
+                rewardToken.balanceOf(address(this))
+            );
         }
+        emit Deposit(pid, _amount);
     }
 
     /**
@@ -73,7 +79,6 @@ contract SushiSwapYieldWallet{
      * @param _amount Amount of LPTs to withdraw
      */
     function withdraw(uint256 _amount) external onlyVault {
-
         IMasterChefSushi(farming).withdraw(pid, _amount);
 
         // Send LPs to vault
@@ -90,30 +95,34 @@ contract SushiSwapYieldWallet{
      */
     function claim(address _token, address _to) external onlyOwner {
         IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
+        emit Claim(_token, _to, IERC20(_token).balanceOf(address(this)));
     }
 
-   /**
-    * @notice Return wallet info including deposited amount and reward data
-    */
-    function getWalletInfo() 
-        external view returns (IMasterChefSushi.UserInfo memory)
+    /**
+     * @notice Return wallet info including deposited amount and reward data
+     */
+    function getWalletInfo()
+        external
+        view
+        returns (IMasterChefSushi.UserInfo memory)
     {
         return IMasterChefSushi(farming).userInfo(pid, address(this));
     }
 
-   /**
-    * @notice Get pending rewards of a user from a pool, mostly for front-end
-    */
-    function getPendingRewards() external view returns (uint256){
-
+    /**
+     * @notice Get pending rewards of a user from a pool, mostly for front-end
+     */
+    function getPendingRewards() external view returns (uint256) {
         return IMasterChefSushi(farming).pendingSushi(pid, address(this));
-
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
 
-    function _withdrawFunds(IERC20 _token, address _to, uint256 _amount) internal {
+    function _withdrawFunds(
+        IERC20 _token,
+        address _to,
+        uint256 _amount
+    ) internal {
         _token.safeTransfer(_to, _amount);
     }
-
 }
