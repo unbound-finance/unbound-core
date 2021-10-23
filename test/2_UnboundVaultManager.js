@@ -114,6 +114,9 @@ describe("UnboundVaultManager", function() {
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
 
         await vaultFactory.enableVault(ethDaiVault.address);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(ethDaiVault.address);
+
         await und.addMinter(vaultFactory.address);
         await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
         await und.enableMinter(vaultFactory.address);
@@ -448,7 +451,7 @@ describe("UnboundVaultManager", function() {
 
         });
 
-        it("should distribute fees(40%) only to safu address if team address is zero", async () => {
+        it("should distribute fees(100%) only to safu address if team address is zero", async () => {
 
             expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("274003877709787165") // vault balance
 
@@ -462,10 +465,10 @@ describe("UnboundVaultManager", function() {
 
             let distribute = await ethDaiVault.distributeFee()
 
-            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "109601551083914866"); // 40% of vault balance
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "274003877709787165"); // 100% of vault balance
 
 
-            expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("164402326625872299") // 60% remaining in contract balance
+            expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("0") // 0% remaining in contract balance
 
         });
 
