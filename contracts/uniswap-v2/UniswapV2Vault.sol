@@ -13,8 +13,6 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 // contracts
 import '../base/UnboundVaultBase.sol';
 
-import '../UnboundYieldWallet.sol';
-
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
 
@@ -62,9 +60,14 @@ contract UniswapV2Vault is UnboundVaultBase {
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
 
+        require(pair.decimals() == 18, 'ID');
+
         // verify validity of the pool
         require(
-            IUniswapV2Factory(_uniswapFactory).getPair(pair.token0(), pair.token1()) == _pair,
+            IUniswapV2Factory(_uniswapFactory).getPair(
+                pair.token0(),
+                pair.token1()
+            ) == _pair,
             'INP'
         );
 
@@ -141,9 +144,7 @@ contract UniswapV2Vault is UnboundVaultBase {
             // transfer tokens to the vault
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
-            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _amount
-            );
+            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
         }
 
         emit Lock(msg.sender, _amount, amount);
@@ -186,9 +187,7 @@ contract UniswapV2Vault is UnboundVaultBase {
             // transfer tokens to the vault
             pair.transfer(yieldWallet[msg.sender], _amount);
             // deposit to yield
-            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(
-                _amount
-            );
+            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
         }
 
         emit Lock(msg.sender, _amount, amount);
@@ -313,13 +312,12 @@ contract UniswapV2Vault is UnboundVaultBase {
             uint256 valueStart = uint256(price).mul(collateral[msg.sender]);
             uint256 loanAfter = debt[msg.sender].sub(_uTokenAmount);
             uint256 valueAfter = (CR.mul(loanAfter).mul(BASE)).div(SECOND_BASE);
-            
-            if(valueStart < valueAfter){
+
+            if (valueStart < valueAfter) {
                 amount = 0;
             } else {
                 amount = valueStart.sub(valueAfter).div(uint256(price));
-            }        
-
+            }
         } else {
             // enough collateral
             amount = (collateral[msg.sender].mul(_uTokenAmount)).div(

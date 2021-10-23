@@ -3,3 +3,10 @@ node_modules
 #Hardhat files
 cache
 artifacts
+
+#Envionment Variables
+.env
+.DS_Store
+
+crytic-export/
+typechain/

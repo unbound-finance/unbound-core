@@ -1,8 +1,6 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
 pragma abicoder v2;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
@@ -91,12 +89,8 @@ contract UniswapPoolActions is
         );
 
         if (currentLiquidity > 0) {
-            // currentLiquidity =
-            //     (currentLiquidity * _shares.toUint128()) /
-            //     totalSupply().toUint128();
-
             uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
-                totalSupply()
+                getTotalSupply()
             );
 
             (tokensBurned0, tokensBurned1) = pool.burn(
@@ -256,8 +250,13 @@ contract UniswapPoolActions is
      * @notice Get's assets under management with realtime fees
      */
     function getAUMWithFees()
-        public
-        returns (uint256 amount0, uint256 amount1)
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 totalFee0,
+            uint256 totalFee1
+        )
     {
         // get balances of amount0 and amount1
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
@@ -270,13 +269,23 @@ contract UniswapPoolActions is
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
 
-            (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper
-                )
+            bytes32 positionKey = PositionKey.compute(
+                address(this),
+                tick.tickLower,
+                tick.tickUpper
             );
+
+            // get current liquidity
+            (uint128 currentLiquidity, , , , ) = pool.positions(positionKey);
+
+            // calculate current positions in the pool from currentLiquidity
+            (uint256 position0, uint256 position1) = LiquidityHelper
+                .getAmountsForLiquidity(
+                    address(pool),
+                    tick.tickLower,
+                    tick.tickUpper,
+                    currentLiquidity
+                );
 
             // update fees earned in Uniswap pool
             // Uniswap recalculates the fees and updates the variables when amount is passed as 0
@@ -285,20 +294,12 @@ contract UniswapPoolActions is
             }
 
             (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper
-                )
+                positionKey
             );
 
-            (uint256 position0, uint256 position1) = LiquidityHelper
-                .getAmountsForLiquidity(
-                    address(pool),
-                    tick.tickLower,
-                    tick.tickUpper,
-                    currentLiquidity
-                );
+            // add fees
+            totalFee0 = totalFee0.add(tokensOwed0);
+            totalFee1 = totalFee1.add(tokensOwed1);
 
             // add fees to the amounts
             totalAmount0 = totalAmount0.add(tokensOwed0).add(position0);

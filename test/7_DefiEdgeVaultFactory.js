@@ -68,7 +68,7 @@ describe("DefiEdgeVaultFactory", function() {
     
         // deploy strategy factory
         let DefiEdgeStrategyFactory = await ethers.getContractFactory("DefiEdgeStrategyFactory");
-        defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address);
+        defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address, uniswapV3Factory.address);
     
         // create strategy
         await defiedgeStrategyFactory.createStrategy(ethDaiPool.address, signers[0].address, [
