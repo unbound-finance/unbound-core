@@ -171,6 +171,90 @@ describe('UnboundVaultBase', function () {
       ).to.be.revertedWith('LE')
     })
 
+    it('should increase uTokenMinted on mint UND', async function () {
+      expect(await ethDaiVault.uTokenMinted()).to.equal("0")
+
+      await ethDaiVault.changeUTokenMintLimit('100000000000000000000000') // 1,00,000 UND
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
+
+    })
+
+    it('should increase uTokenMinted on mint UND -  2nd time', async function () {
+      expect(await ethDaiVault.uTokenMinted()).to.equal("0")
+
+      await ethDaiVault.changeUTokenMintLimit('100000000000000000000000') // 1,00,000 UND
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("113137084989847603904")
+
+    })
+
+    it('should revert when und mint limit is reached -2nd time', async function () {
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("0")
+
+      await ethDaiVault.changeUTokenMintLimit('113137084989847603903') // 113 UND - little less then 2nd time mint amount
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await expect(
+        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      ).to.be.revertedWith('LE')
+
+    })
+
+
+    it('uTokenMinted should be equal to balance of all users after mint', async function () {
+      
+      expect(await ethDaiVault.uTokenMinted()).to.equal("0")
+
+      await ethDaiVault.changeUTokenMintLimit('100000000000000000000000') // 1,00,000 UND
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952") // 56568542494923801952
+
+      let balanceUser1 = (await und.balanceOf(signers[0].address)).toString()
+      let balanceUser2 = (await und.balanceOf(signers[1].address)).toString()
+      let balanceVault = (await und.balanceOf(ethDaiVault.address)).toString()
+      let balanceStaking = (await und.balanceOf(undDaiPair)).toString()
+
+      let totalAvailableUND = (new BigNumber(balanceUser1).plus(balanceUser2).plus(balanceVault).plus(balanceStaking)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(totalAvailableUND) // 56568542494923801952
+
+    })
+
     it('lock 1 LP - should mint correct amount of UND to user account, staking adress & vault contract', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
@@ -419,6 +503,9 @@ describe('UnboundVaultBase', function () {
 
   describe('#burn', async () => {
     beforeEach(async function () {
+
+      await ethDaiVault.changeUTokenMintLimit('200000000000000000000') // 200 UND
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
@@ -432,6 +519,77 @@ describe('UnboundVaultBase', function () {
         .connect(signers[1])
         .lock(lockAmount, signers[1].address, zeroAddress, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
+
+    })
+
+    it('unlock - should decrease uTokenMinted amount on burn', async function () {
+      
+      expect(await ethDaiVault.uTokenMinted()).to.equal("113137084989847603904")
+
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await ethDaiVault.unlock(debt, collateral)
+
+      let expectedAmount = (new BigNumber("113137084989847603904").minus(debt)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(expectedAmount)
+
+    })
+
+    it('unlock - should decrease uTokenMinted amount on burn - 2nd time', async function () {
+      
+      expect(await ethDaiVault.uTokenMinted()).to.equal("113137084989847603904")
+
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await ethDaiVault.unlock(debt, collateral)
+
+      let expectedAmount = (new BigNumber("113137084989847603904").minus(debt)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(expectedAmount) // 56568542494923801952
+
+      let debtUser1 = (await ethDaiVault.debt(signers[1].address)).toString()
+
+      let debtToBePaid = new BigNumber(debtUser1).multipliedBy('0.5').toFixed(0) // 50%
+
+      await ethDaiVault.connect(signers[1]).unlock(debtToBePaid, "1")
+
+      let expectedAmount2 = (new BigNumber(expectedAmount).minus(debtToBePaid)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(expectedAmount2) // 28284271247461900976
+
+    })
+
+    it('uTokenMinted should be equal to balance of all users after burn', async function () {
+      
+      expect(await ethDaiVault.uTokenMinted()).to.equal("113137084989847603904")
+
+      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
+
+      await ethDaiVault.unlock(debt, collateral)
+
+      let expectedAmount = (new BigNumber("113137084989847603904").minus(debt)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(expectedAmount) // 56568542494923801952
+
+      let balanceUser1 = (await und.balanceOf(signers[0].address)).toString()
+      let balanceUser2 = (await und.balanceOf(signers[1].address)).toString()
+      let balanceVault = (await und.balanceOf(ethDaiVault.address)).toString()
+      let balanceStaking = (await und.balanceOf(undDaiPair)).toString()
+
+      let totalAvailableUND = (new BigNumber(balanceUser1).plus(balanceUser2).plus(balanceVault).plus(balanceStaking)).toFixed()
+
+      expect(await ethDaiVault.uTokenMinted()).to.equal(totalAvailableUND) // 56568542494923801952
+
     })
 
     it('unlock - should emit unlock and burn event after repaying all debt', async function () {
