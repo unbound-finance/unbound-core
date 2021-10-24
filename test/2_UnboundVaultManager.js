@@ -1,7 +1,9 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { MAX_UINT_AMOUNT } = require('./helpers/contract-helpers')
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+const ethPrice = "320000000000"; // $3200
 
 let signers;
 let governance;
@@ -72,6 +74,23 @@ describe("UnboundVaultManager", function() {
         undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
         ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
 
+        let daiAmount = ethers.utils.parseEther(((Number(ethPrice) / 100000000) * 1).toString()).toString();
+        let ethAmount = ethers.utils.parseEther("1").toString();
+
+        await tDai.approve(uniswapRouter.address, daiAmount);
+        await tEth.approve(uniswapRouter.address, ethAmount);
+
+        await uniswapRouter.addLiquidity(
+            tDai.address,
+            tEth.address,
+            daiAmount,
+            ethAmount,
+            daiAmount,
+            ethAmount,
+            signers[0].address,
+            MAX_UINT_AMOUNT
+        );
+
         let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
         feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
         await feedEthUsd.setPrice("300000000000") // 1 ETH = $3000
@@ -90,6 +109,18 @@ describe("UnboundVaultManager", function() {
         ethDaiVault = await vaultFactory.vaultByIndex(1);
         ethDaiVault = await ethers.getContractAt("UniswapV2Vault", ethDaiVault);
 
+        ethDaiPair = await ethers.getContractAt("UniswapV2Pair", ethDaiPair);
+
+        await ethDaiVault.enableYieldWalletFactory(zeroAddress);
+
+        await vaultFactory.enableVault(ethDaiVault.address);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(ethDaiVault.address);
+
+        await und.addMinter(vaultFactory.address);
+        await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
+        await und.enableMinter(vaultFactory.address);
+
     });
 
     describe("#staticVariables", async () => {
@@ -97,7 +128,7 @@ describe("UnboundVaultManager", function() {
             expect(await ethDaiVault.factory()).to.equal(vaultFactory.address);
         });
         it("should set correct lpt pool address", async function() { 
-            expect(await ethDaiVault.pair()).to.equal(ethDaiPair);
+            expect(await ethDaiVault.pair()).to.equal(ethDaiPair.address);
         });
         it("should set correct und token address", async function() { 
             expect(await ethDaiVault.uToken()).to.equal(und.address);
@@ -388,6 +419,19 @@ describe("UnboundVaultManager", function() {
 
     describe("#distributeFee", function() {
 
+        beforeEach(async function(){
+
+            await ethDaiVault.changeLTV(LTV)
+            await ethDaiVault.changeCR(CR)
+            await ethDaiVault.changeFee(PROTOCOL_FEE);
+
+            let lockAmount = ethers.utils.parseEther("1").toString();
+
+            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+
+        })
+
         it("should revert if safu share is zero", async () => {
             // Change team address
             await ethDaiVault.changeTeamFeeAddress(signers[1].address);
@@ -406,9 +450,31 @@ describe("UnboundVaultManager", function() {
             await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
 
         });
-        it("should distribute fees to correct address", async () => {
-            // Transfer UND to vault
-            // await und.transfer(ethDaiVault.address, "1000");
+
+        it("should distribute fees(100%) only to safu address if team address is zero", async () => {
+
+            expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("274003877709787165") // vault balance
+
+            // Not changing team address here
+
+            // Chnage Safu address
+            await ethDaiVault.changeSafuAddress(signers[1].address);
+
+            // Change safu share
+            await ethDaiVault.changeSafuShare(safuShare);
+
+            let distribute = await ethDaiVault.distributeFee()
+
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "274003877709787165"); // 100% of vault balance
+
+
+            expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("0") // 0% remaining in contract balance
+
+        });
+
+        it("should distribute fees to correct address - 40% safu and remaining 60% to team", async () => {
+
+            expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("274003877709787165") // vault balance
 
             // Change team address
             await ethDaiVault.changeTeamFeeAddress(signers[1].address);
@@ -421,8 +487,8 @@ describe("UnboundVaultManager", function() {
 
             let distribute = await ethDaiVault.distributeFee()
 
-            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "0");
-            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, "0");
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, "109601551083914866"); // 40% of vault balance
+            expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "164402326625872299"); // 60% of vault balance
 
         });
     })

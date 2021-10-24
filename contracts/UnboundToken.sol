@@ -25,6 +25,7 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
     event AddMinter(address _minter);
     event EnableMinter(address _minter);
     event ChangeGovernance(address _governance);
+    event AcceptGovernance(address _governance);
 
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
@@ -65,11 +66,7 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
      * @param _account Address to burn tokens from
      * @param _amount Amount of tokens to be burned
      */
-    function burn(address _account, uint256 _amount)
-        external
-        whenNotPaused
-        validMinter
-    {
+    function burn(address _account, uint256 _amount) external validMinter {
         _burn(_account, _amount);
     }
 
@@ -109,6 +106,7 @@ contract UnboundToken is ERC20, ERC20Permit, Pausable {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+        emit AcceptGovernance(governance);
     }
 
     /**

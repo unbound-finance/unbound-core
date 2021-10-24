@@ -15,7 +15,7 @@ contract TestOracleShare {
 
         IDefiEdgeStrategy strategy = IDefiEdgeStrategy(_strategy);
 
-        (uint256 reserve0, uint256 reserve1) = strategy.getAUMWithFees();
+        (uint256 reserve0, uint256 reserve1,,) = strategy.getAUMWithFees();
 
         uint256 price = DefiEdgeSharePriceProvider.getSharePriceFromReserve(
             _strategy,

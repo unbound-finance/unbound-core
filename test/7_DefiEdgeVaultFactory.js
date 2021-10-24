@@ -68,7 +68,7 @@ describe("DefiEdgeVaultFactory", function() {
     
         // deploy strategy factory
         let DefiEdgeStrategyFactory = await ethers.getContractFactory("DefiEdgeStrategyFactory");
-        defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address);
+        defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address, uniswapV3Factory.address);
     
         // create strategy
         await defiedgeStrategyFactory.createStrategy(ethDaiPool.address, signers[0].address, [
@@ -214,11 +214,11 @@ describe("DefiEdgeVaultFactory", function() {
         ).to.be.revertedWith('NA');
     });
 
-    it("should revert if vault address is not valid", async () => {
-        await expect(
-            vaultFactory.enableVault(zeroAddress)
-        ).to.be.reverted;
-    });
+    // it("should revert if vault address is not valid", async () => {
+    //     await expect(
+    //         vaultFactory.enableVault(zeroAddress)
+    //     ).to.be.reverted;
+    // });
 
     it("should allow vault", async () => {
 
@@ -232,7 +232,9 @@ describe("DefiEdgeVaultFactory", function() {
         let vault = await vaultFactory.vaultByIndex(1);
 
         await vaultFactory.enableVault(vault);
-
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(vault);
+    
         expect(await vaultFactory.allowed(vault)).to.be.equal(true);
 
     });
@@ -269,6 +271,9 @@ describe("DefiEdgeVaultFactory", function() {
         vault = await vaultFactory.vaultByIndex(1);
 
         await vaultFactory.enableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(vault);
+    
     })
 
     it("should revert if caller is not governance", async () => {
@@ -284,6 +289,8 @@ describe("DefiEdgeVaultFactory", function() {
         expect(await vaultFactory.allowed(vault)).to.be.equal(true);
 
         await vaultFactory.disableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
+        await vaultFactory.executeDisableVault(vault);
 
         expect(await vaultFactory.allowed(vault)).to.be.equal(false);
 

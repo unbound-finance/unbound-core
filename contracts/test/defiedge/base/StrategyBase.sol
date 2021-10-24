@@ -1,19 +1,12 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/ShareHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../interfaces/IStrategyFactory.sol";
+
 import "hardhat/console.sol";
-
-interface IFactory {
-    function feeTo() external view returns (address);
-
-    function denied(address) external view returns (bool);
-
-    function PROTOCOL_FEE() external view returns (uint256);
-}
-
 contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     using SafeMath for uint256;
 
@@ -29,10 +22,17 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     address public operator;
     address public pendingOperator;
 
-    IFactory public factory;
+    // max number of shares to be minted
+    // if set 0, allows unlimited deposits
+    uint256 public limit;
+
+    IStrategyFactory public factory;
 
     // Uniswap pool for the strategy
     IUniswapV3Pool public pool;
+
+    // when true emergency functions will be frozen forever
+    bool public freezeEmergency;
 
     struct Tick {
         uint256 amount0;
@@ -46,7 +46,13 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == operator, "NO");
+        require(msg.sender == operator, "N");
+        _;
+    }
+
+    // Modifiers
+    modifier onlyGovernance() {
+        require(msg.sender == factory.governance(), "N");
         _;
     }
 
@@ -83,6 +89,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         _;
     }
 
+    function getTotalSupply() internal view returns (uint256) {
+        return totalSupply().add(accManagementFee);
+    }
+
     /**
      * @notice Updates the shares of the user
      * @param _amount0 Amount of token0
@@ -105,7 +115,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply()
+            getTotalSupply()
         );
 
         require(share > 0, "IS");
@@ -138,10 +148,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         emit ChangeFee(managementFee);
     }
 
-    /**
-     * @notice changes address where the operator is receiving the fee
-     * @param _newFeeTo New address where fees should be received
-     */
+    // /**
+    //  * @notice changes address where the operator is receiving the fee
+    //  * @param _newFeeTo New address where fees should be received
+    //  */
     function changeFeeTo(address _newFeeTo) external onlyOperator {
         feeTo = _newFeeTo;
     }
@@ -172,6 +182,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         length = ticks.length;
     }
 
+    function changeLimit(uint256 _limit) external onlyOperator {
+        limit = _limit;
+    }
+
     /**
      * @notice Claims the fee for protocol and management
      */
@@ -185,5 +199,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _mint(feeTo, accManagementFee);
             accManagementFee = 0;
         }
+    }
+
+    function freezeEmergencyFunctions() external onlyGovernance {
+        freezeEmergency = true;
     }
 }

@@ -87,7 +87,7 @@ describe('DefiEdgeVault', function () {
 
     // deploy strategy factory
     let DefiEdgeStrategyFactory = await ethers.getContractFactory("DefiEdgeStrategyFactory");
-    defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address);
+    defiedgeStrategyFactory = await DefiEdgeStrategyFactory.deploy(signers[0].address, uniswapV3Factory.address);
 
     // create strategy
     await defiedgeStrategyFactory.createStrategy(ethDaiPool.address, signers[0].address, [
@@ -179,6 +179,9 @@ describe('DefiEdgeVault', function () {
     await ethDaiVault.changeStakeFee(stakeFee)
 
     await vaultFactory.enableVault(ethDaiVault.address)
+    await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+    await vaultFactory.executeEnableVault(ethDaiVault.address);
+
     await und.addMinter(vaultFactory.address)
     await ethers.provider.send('evm_increaseTime', [604800]) // increase evm time by 7 days
     await und.enableMinter(vaultFactory.address)
@@ -282,6 +285,8 @@ describe('DefiEdgeVault', function () {
 
     it('should revert if vault is not valid minter', async function () {
       await vaultFactory.disableVault(ethDaiVault.address)
+      await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
+      await vaultFactory.executeDisableVault(ethDaiVault.address);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
 
@@ -676,13 +681,13 @@ describe('DefiEdgeVault', function () {
       ).to.be.revertedWith('BAL')
     })
 
-    it('should revert if CR is 0', async function () {
-        await ethDaiVault.changeCR("0");
+    // it('should revert if CR is 0', async function () {
+    //     await ethDaiVault.changeCR("0");
 
-        await expect(
-          ethDaiVault.unlock("1", '1')
-        ).to.be.revertedWith('NI')
-      })
+    //     await expect(
+    //       ethDaiVault.unlock("1", '1')
+    //     ).to.be.revertedWith('NI')
+    // })
 
     it('should revert if minCollateral amount is less then received amount', async function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
@@ -2023,19 +2028,13 @@ describe('DefiEdgeVault', function () {
 
       let balance = (await und.balanceOf(ethDaiVault.address)).toString()
 
-      let safuAmount = new BigNumber(balance)
-        .multipliedBy(safuShare)
-        .dividedBy(secondBase)
-        .toFixed(0)
-      let remainingAmount = new BigNumber(balance).minus(safuAmount).toFixed()
-
       let distribute = await ethDaiVault.distributeFee()
 
       expect(distribute)
         .to.emit(und, 'Transfer')
-        .withArgs(ethDaiVault.address, signers[1].address, safuAmount)
+        .withArgs(ethDaiVault.address, signers[1].address, balance)
       expect(await und.balanceOf(ethDaiVault.address)).to.be.equal(
-        remainingAmount
+        '0'
       )
     })
   })
@@ -2307,11 +2306,11 @@ describe('DefiEdgeVault', function () {
         .multipliedBy(secondBase)
         .dividedBy(debtAfter)
         .dividedBy(BASE)
-      console.log('current cr2: ' + currentCr2.toFixed(0))
+      console.log('current cr2: ' + currentCr2.toFixed())
 
 
-      expect(currentCr2.isEqualTo(currentCr)).to.equal(
-        true,
+      expect(currentCr2.toFixed(0)).to.equal(
+        currentCr.toFixed(0),
         'Invalid user cr ratio'
       )
     })

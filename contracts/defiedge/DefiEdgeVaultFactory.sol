@@ -20,12 +20,20 @@ contract DefiEdgeVaultFactory is Pausable {
     uint256 public index;
 
     mapping(uint256 => address) public vaultByIndex;
+    mapping(address => uint256) public disableDates;
+    mapping(address => uint256) public enableDates;
 
     event NewVault(address _vault, uint256 _index);
     event ChangeGovernance(address _governance);
+    event AcceptGovernance(address _governance);
 
     event EnableVault(address _vault);
     event DisableVault(address _vault);
+
+    modifier validAddress(address _address) {
+        require(_address != address(0), 'IA');
+        _;
+    }
 
     modifier onlyGovernance() {
         require(msg.sender == governance, 'NA');
@@ -53,12 +61,7 @@ contract DefiEdgeVaultFactory is Pausable {
         address _staking
     ) external whenNotPaused returns (address vault) {
         vault = address(
-            new DefiEdgeVault(
-                _uToken,
-                _governance,
-                _strategy,
-                _staking
-            )
+            new DefiEdgeVault(_uToken, _governance, _strategy, _staking)
         );
         index = index + 1;
         vaultByIndex[index] = vault;
@@ -71,9 +74,18 @@ contract DefiEdgeVaultFactory is Pausable {
      * @param _vault Address of the vault to enable
      */
     function enableVault(address _vault) external onlyGovernance {
-        require(vaults[_vault]);
-        allowed[_vault] = true;
+        enableDates[_vault] = block.timestamp;
         emit EnableVault(_vault);
+    }
+
+    /**
+     * @notice Executes enable vault function
+     * @param _vault Address of the vault
+     */
+    function executeEnableVault(address _vault) external {
+        require(enableDates[_vault] != 0, 'ID');
+        require(enableDates[_vault] + 3 days < block.timestamp, 'WD');
+        allowed[_vault] = true;
     }
 
     /**
@@ -81,15 +93,29 @@ contract DefiEdgeVaultFactory is Pausable {
      * @param _vault Address of the vault
      */
     function disableVault(address _vault) external onlyGovernance {
-        allowed[_vault] = false;
+        disableDates[_vault] = block.timestamp;
         emit DisableVault(_vault);
+    }
+
+    /**
+     * @notice Executes disabled vault, should be called after 7 days
+     * @param _vault Address of the vault contract
+     */
+    function executeDisableVault(address _vault) external {
+        require(disableDates[_vault] != 0, 'ID');
+        require(disableDates[_vault] + 7 days < block.timestamp, 'WD');
+        allowed[_vault] = false;
     }
 
     /**
      * @notice Changes governnance via two step process
      * @param _governance Address of the new governance
      */
-    function changeGovernance(address _governance) external onlyGovernance {
+    function changeGovernance(address _governance)
+        external
+        onlyGovernance
+        validAddress(_governance)
+    {
         pendingGovernance = _governance;
         emit ChangeGovernance(_governance);
     }
@@ -100,6 +126,7 @@ contract DefiEdgeVaultFactory is Pausable {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, 'NA');
         governance = pendingGovernance;
+        emit AcceptGovernance(governance);
     }
 
     /**

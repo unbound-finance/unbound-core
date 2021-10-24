@@ -18,8 +18,8 @@ import '../interfaces/IUnboundToken.sol';
 contract UnboundVaultManager {
     using SafeMath for uint256;
 
-    uint256 BASE = uint256(1e18);
-    uint256 SECOND_BASE = uint256(1e8);
+    uint256 BASE = uint256(1e18); // used to normalise the value to 1e18 format
+    uint256 SECOND_BASE = uint256(1e8); // act as base decimals for LTV and CR
 
     address public factory; // address of vault factory
     IUniswapV2Pair public pair; // address of liquidity pool token
@@ -60,9 +60,13 @@ contract UnboundVaultManager {
     event ChangeProtocolFee(uint256 _PROTOCOL_FEE);
     event ChangeSafuShare(uint256 _safuShare);
 
+    event ChangeTeamFeeAddress(address _team);
+    event ChangeStaking(address _staking);
+    event DistributeFee(uint256 _amount);
+
     event EnableYieldFactory(address _factory);
     event DisableYieldFactory(address _factory);
-    event ClaimTokens(address _token, uint256 _amount);
+    event ClaimTokens(address _token, address _to, uint256 _amount);
 
     // checks if governance is calling
     modifier onlyGovernance() {
@@ -70,8 +74,13 @@ contract UnboundVaultManager {
         _;
     }
 
+    modifier validAddress(address _address) {
+        require(_address != address(0), 'IA');
+        _;
+    }
+
     // government and manager both can call
-    modifier governanceAndManager() {
+    modifier governanceOrManager() {
         require(msg.sender == manager || msg.sender == governance, 'NA');
         _;
     }
@@ -84,6 +93,7 @@ contract UnboundVaultManager {
     function claim(address _token, address _to) external onlyGovernance {
         require(address(pair) != _token && address(uToken) != _token);
         IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
+        emit ClaimTokens(_token, _to, IERC20(_token).balanceOf(address(this)));
     }
 
     /**
@@ -102,7 +112,8 @@ contract UnboundVaultManager {
      * @notice Changes collatralization ratio
      * @param _CR New ratio to set 1e8 is 100%
      */
-    function changeCR(uint256 _CR) external governanceAndManager {
+    function changeCR(uint256 _CR) external governanceOrManager {
+        require(CR <= SECOND_BASE, 'IN');
         CR = _CR;
         emit ChangeCR(_CR);
     }
@@ -111,7 +122,7 @@ contract UnboundVaultManager {
      * @notice Changes loan to value ratio
      * @param _LTV New loan to value ratio, 1e8 is 100%
      */
-    function changeLTV(uint256 _LTV) external governanceAndManager {
+    function changeLTV(uint256 _LTV) external governanceOrManager {
         require(_LTV <= SECOND_BASE);
         LTV = _LTV;
         emit ChangeLTV(_LTV);
@@ -121,8 +132,13 @@ contract UnboundVaultManager {
      * @notice Changes address where the fees should be received
      * @param _team New fee to address
      */
-    function changeTeamFeeAddress(address _team) external onlyGovernance {
+    function changeTeamFeeAddress(address _team)
+        external
+        onlyGovernance
+        validAddress(_team)
+    {
         team = _team;
+        emit ChangeTeamFeeAddress(_team);
     }
 
     /**
@@ -149,8 +165,13 @@ contract UnboundVaultManager {
      * @notice CHanges staking address
      * @param _staking New staking address
      */
-    function changeStaking(address _staking) external onlyGovernance {
+    function changeStaking(address _staking)
+        external
+        onlyGovernance
+        validAddress(_staking)
+    {
         staking = _staking;
+        emit ChangeStaking(_staking);
     }
 
     /**
@@ -177,7 +198,11 @@ contract UnboundVaultManager {
      * @notice Change governance address
      * @param _governance New governance address
      */
-    function changeGovernance(address _governance) external onlyGovernance {
+    function changeGovernance(address _governance)
+        external
+        onlyGovernance
+        validAddress(_governance)
+    {
         pendingGovernance = _governance;
         emit ChangeGovernance(_governance);
     }
@@ -194,7 +219,11 @@ contract UnboundVaultManager {
      * @notice Change manager, managers can manage LTV and CR
      * @notice _manager Address of the manager
      */
-    function changeManager(address _manager) external onlyGovernance {
+    function changeManager(address _manager)
+        external
+        onlyGovernance
+        validAddress(_manager)
+    {
         manager = _manager;
         emit ChangeManager(_manager);
     }
@@ -203,7 +232,7 @@ contract UnboundVaultManager {
      * @notice Distributes the fee collected to the contract
      */
     function distributeFee() external {
-        // check if safu and team is initialized properly
+        // check if safu is initialized properly
         require((safu != address(0)) && (safuShare > 0), 'INVALID');
         uint256 amount = uToken.balanceOf(address(this));
 
@@ -218,8 +247,10 @@ contract UnboundVaultManager {
             );
         } else {
             // transfer the whole to safu
-            uToken.transfer(safu, amount.mul(safuShare).div(SECOND_BASE));
+            uToken.transfer(safu, amount);
         }
+
+        emit DistributeFee(amount);
     }
 
     /**

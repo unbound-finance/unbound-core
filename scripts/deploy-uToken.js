@@ -8,7 +8,8 @@ async function main() {
    *
    */
 
-  const GOVERNANCE = '0x439df1F17E7ACB55edfCa0Ce95368dE3Feb5563E'
+  // multisig address
+  const GOVERNANCE = '0xf7Aa7e6C820e13295499ef99467835dda41dA5d1'
 
   /**
    *
