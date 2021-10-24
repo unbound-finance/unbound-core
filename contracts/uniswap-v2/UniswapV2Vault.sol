@@ -13,8 +13,6 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 // contracts
 import '../base/UnboundVaultBase.sol';
 
-import '../UnboundYieldWallet.sol';
-
 contract UniswapV2Vault is UnboundVaultBase {
     using SafeMath for uint256;
 
@@ -61,6 +59,8 @@ contract UniswapV2Vault is UnboundVaultBase {
         uToken = IUnboundToken(_uToken);
         governance = _governance;
         pair = IUniswapV2Pair(_pair);
+
+        require(pair.decimals() == 18, 'ID');
 
         // verify validity of the pool
         require(

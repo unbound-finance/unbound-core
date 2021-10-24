@@ -112,7 +112,10 @@ describe("UnboundToken", function() {
         await ethDaiVault.changeLTV(LTV)
         await ethDaiVault.changeCR(CR)
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
+
         await vaultFactory.enableVault(ethDaiVault.address);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(ethDaiVault.address);
 
         await und.addMinter(vaultFactory.address);
         await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
@@ -382,6 +385,8 @@ describe("UnboundToken", function() {
 
         it("should revert if caller is not valid minter vault", async function() {
             await vaultFactory.disableVault(ethDaiVault.address);
+            await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
+            await vaultFactory.executeDisableVault(ethDaiVault.address);
 
             await ethDaiPair.approve(ethDaiVault.address, "100");
 
@@ -430,6 +435,8 @@ describe("UnboundToken", function() {
             await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
 
             await vaultFactory.disableVault(ethDaiVault.address);
+            await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
+            await vaultFactory.executeDisableVault(ethDaiVault.address);
 
             await expect(ethDaiVault.unlock("56568542494923801952", "1"))
                 .to.be.revertedWith("NA");
@@ -485,18 +492,18 @@ describe("UnboundToken", function() {
             await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
                 .to.be.revertedWith("Pausable: paused");
         });
-        it("should revert if unlock LPT when contract is paused", async function() { 
+        // it("should revert if unlock LPT when contract is paused", async function() { 
 
-            let lockAmount = ethers.utils.parseEther("1").toString();
+        //     let lockAmount = ethers.utils.parseEther("1").toString();
 
-            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        //     await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+        //     await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
             
-            await und.setPause();            
+        //     await und.setPause();            
 
-            await expect(ethDaiVault.unlock("1", "1"))
-                .to.be.revertedWith("Pausable: paused");
-        });
+        //     await expect(ethDaiVault.unlock("1", "1"))
+        //         .to.be.revertedWith("Pausable: paused");
+        // });
         
     })
 
@@ -527,24 +534,24 @@ describe("UnboundToken", function() {
                 .to.emit(und, "Transfer")
 
         });
-        it("should revert if unlock LPT when contract is paused and ca unlock once contract is unpaused", async function() { 
+        // it("should revert if unlock LPT when contract is paused and ca unlock once contract is unpaused", async function() { 
 
-            let lockAmount = ethers.utils.parseEther("1").toString();
+        //     let lockAmount = ethers.utils.parseEther("1").toString();
 
-            await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        //     await ethDaiPair.approve(ethDaiVault.address, lockAmount);
+        //     await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
             
-            await und.setPause();            
+        //     await und.setPause();            
 
-            await expect(ethDaiVault.unlock("1000", "1"))
-                .to.be.revertedWith("Pausable: paused");
+        //     await expect(ethDaiVault.unlock("1000", "1"))
+        //         .to.be.revertedWith("Pausable: paused");
 
-            await und.setUnpause();     
+        //     await und.setUnpause();     
 
-            await expect(ethDaiVault.unlock("1000", "1"))
-                .to.emit(und, "Transfer")
+        //     await expect(ethDaiVault.unlock("1000", "1"))
+        //         .to.emit(und, "Transfer")
     
-        });
+        // });
     })
 
 

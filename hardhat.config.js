@@ -29,21 +29,22 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      allowUnlimitedContractSize: true,
       accounts: {
         mnemonic:
           'anxiety false usage noble consider few decline improve robust behave peasant put',
       },
     },
-    kovan: {
-      url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: [process.env.PRIVATE_KEY],
-      gasLimit: 10000000000,
-    },
-    mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: [process.env.MAINNET_PRIVATE_KEY],
-      gasLimit: 10000000000,
-      gasPrice: 45000000000,
-    },
+    // kovan: {
+    //   url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
+    //   accounts: [process.env.PRIVATE_KEY],
+    //   gasLimit: 10000000000,
+    // },
+    // mainnet: {
+    //   url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
+    //   accounts: [process.env.MAINNET_PRIVATE_KEY],
+    //   gasLimit: 10000000000,
+    //   gasPrice: 45000000000,
+    // },
   },
 }
