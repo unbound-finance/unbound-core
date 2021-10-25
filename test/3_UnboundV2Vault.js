@@ -132,10 +132,13 @@ describe('UniswapV2Vault', function () {
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYieldWalletFactory(zeroAddress)
+    
+    await ethDaiVault.enableYieldWalletFactory(zeroAddress);
+    await vaultFactory.enableVault(ethDaiVault.address);
 
-    await vaultFactory.enableVault(ethDaiVault.address)
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+    await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
 
     await und.addMinter(vaultFactory.address)
@@ -275,7 +278,25 @@ describe('UniswapV2Vault', function () {
             undDaiPair
           )
         ).to.be.reverted;
-      })
+    })
+    it('should revert if LP token decimals is not 18', async function () {
+
+      let pairToken = await ethers.getContractFactory('TestToken')
+      pairToken = await pairToken.deploy("Uniswap LP", "LP", 9, signers[0].address)
+
+      await expect(
+        vaultFactory.createVault(
+          und.address,
+          signers[0].address,
+          pairToken.address,
+          tDai.address,
+          [feedEthUsd.address, feedEthUsd.address],
+          '900000000000000000', // 10%
+          5000,
+          undDaiPair
+        )
+      ).to.be.revertedWith('ID')
+    })
   })
 
   describe('#lockWithPermit', async () => {

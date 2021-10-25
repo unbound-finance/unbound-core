@@ -154,10 +154,11 @@ describe('SushiSwapYieldWallet', function () {
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
     await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
-    // await ethDaiVault.enableYieldWalletFactory(zeroAddress)
+    await vaultFactory.enableVault(ethDaiVault.address);
 
-    await vaultFactory.enableVault(ethDaiVault.address)
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+    await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
     
     await und.addMinter(vaultFactory.address)
@@ -244,6 +245,34 @@ describe('SushiSwapYieldWallet', function () {
       await expect(
         yieldwallet.deposit(lockAmount)
       ).to.be.revertedWith('NA')
+    })
+
+    it('should deposit event on lock LPT', async function () {
+
+      let lockAmount = ethers.utils.parseEther('2').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+
+      let lock = await ethDaiVault.lock(
+        lockAmount,
+        signers[0].address,
+        yieldWalletFactory.address,
+        0
+      )
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
+
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      expect(lock).to.emit(yieldwallet, "Deposit").withArgs(pid, lockAmount)
+
     })
 
     it('lock - should increase yieldWalletDeposit amount on lock LPT', async function () {
@@ -738,6 +767,36 @@ describe('SushiSwapYieldWallet', function () {
           .claim(sushiToken.address, signers[0].address)
       ).to.emit(sushiToken, "Transfer")
       .withArgs(wallet, signers[0].address, "100");
+    })
+
+    it('should emit claim token event', async function () {
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(
+        lockAmount,
+        signers[0].address,
+        yieldWalletFactory.address,
+        0
+      )
+  
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+  
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+  
+      await sushiToken.transfer(wallet, "100")
+  
+      await expect(
+        yieldwallet
+          .claim(sushiToken.address, signers[0].address)
+      ).to.emit(yieldwallet, "Claim")
+      .withArgs(sushiToken.address, signers[0].address, "100");
     })
   })
 
