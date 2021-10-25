@@ -72,7 +72,7 @@ contract UniswapV2VaultFactory is Pausable {
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
         address _staking
-    ) external whenNotPaused returns (address vault) {
+    ) external whenNotPaused onlyGovernance returns (address vault) {
         vault = address(
             new UniswapV2Vault(
                 _uToken,
@@ -126,7 +126,8 @@ contract UniswapV2VaultFactory is Pausable {
      */
     function executeDisableVault(address _vault) external {
         require(disableDates[_vault] != 0, 'ID');
-        require(disableDates[_vault] + 7 days < block.timestamp, 'WD');
+        require(disableDates[_vault] + 3 days < block.timestamp, 'WD');
+        disableDates[_vault] = 0;
         allowed[_vault] = false;
     }
 
