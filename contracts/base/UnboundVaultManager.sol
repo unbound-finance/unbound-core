@@ -94,8 +94,9 @@ contract UnboundVaultManager {
      */
     function claim(address _token, address _to) external onlyGovernance {
         require(address(pair) != _token && address(uToken) != _token);
-        IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
-        emit ClaimTokens(_token, _to, IERC20(_token).balanceOf(address(this)));
+        uint256 transferAmt = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).transfer(_to, transferAmt);
+        emit ClaimTokens(_token, _to, transferAmt);
     }
 
     /**
@@ -115,7 +116,6 @@ contract UnboundVaultManager {
      * @param _CR New ratio to set 1e8 is 100%
      */
     function changeCR(uint256 _CR) external governanceOrManager {
-        require(CR <= SECOND_BASE, 'IN');
         CR = _CR;
         emit ChangeCR(_CR);
     }
