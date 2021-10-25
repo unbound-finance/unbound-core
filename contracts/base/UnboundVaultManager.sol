@@ -26,6 +26,8 @@ contract UnboundVaultManager {
     IUnboundToken public uToken; // address of Unbound token to mint
 
     mapping(address => bool) public isValidYieldWalletFactory; // Supported factories for yieldWallets
+    mapping(address => uint256) public disableYeildWalletFactoryDates; //
+    mapping(address => uint256) public enableYeildWalletFactoryDates;
 
     address public governance;
     address public manager;
@@ -261,8 +263,24 @@ contract UnboundVaultManager {
         external
         onlyGovernance
     {
-        isValidYieldWalletFactory[_factory] = true;
+        enableYeildWalletFactoryDates[_factory] = block.timestamp;
         emit EnableYieldFactory(_factory);
+    }
+
+    /**
+     * @notice Executes enableYeildWalletFactory function
+     * @param _factory Address of the factory
+     */
+    function executeEnableYeildWalletFactory(address _factory)
+        external
+        onlyGovernance
+    {
+        require(enableYeildWalletFactoryDates[_factory] != 0, 'ID');
+        require(
+            enableYeildWalletFactoryDates[_factory] + 3 days < block.timestamp,
+            'WD'
+        );
+        isValidYieldWalletFactory[_factory] = true;
     }
 
     /**
@@ -274,6 +292,7 @@ contract UnboundVaultManager {
         onlyGovernance
     {
         isValidYieldWalletFactory[_factory] = false;
+        enableYeildWalletFactoryDates[_factory] = 0;
         emit DisableYieldFactory(_factory);
     }
 }
