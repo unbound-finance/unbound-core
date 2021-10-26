@@ -26,6 +26,8 @@ contract UnboundVaultManager {
     IUnboundToken public uToken; // address of Unbound token to mint
 
     mapping(address => bool) public isValidYieldWalletFactory; // Supported factories for yieldWallets
+    mapping(address => uint256) public disableYeildWalletFactoryDates; //
+    mapping(address => uint256) public enableYeildWalletFactoryDates;
 
     address public governance;
     address public manager;
@@ -92,8 +94,9 @@ contract UnboundVaultManager {
      */
     function claim(address _token, address _to) external onlyGovernance {
         require(address(pair) != _token && address(uToken) != _token);
-        IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
-        emit ClaimTokens(_token, _to, IERC20(_token).balanceOf(address(this)));
+        uint256 transferAmt = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).transfer(_to, transferAmt);
+        emit ClaimTokens(_token, _to, transferAmt);
     }
 
     /**
@@ -113,7 +116,6 @@ contract UnboundVaultManager {
      * @param _CR New ratio to set 1e8 is 100%
      */
     function changeCR(uint256 _CR) external governanceOrManager {
-        require(CR <= SECOND_BASE, 'IN');
         CR = _CR;
         emit ChangeCR(_CR);
     }
@@ -261,8 +263,24 @@ contract UnboundVaultManager {
         external
         onlyGovernance
     {
-        isValidYieldWalletFactory[_factory] = true;
+        enableYeildWalletFactoryDates[_factory] = block.timestamp;
         emit EnableYieldFactory(_factory);
+    }
+
+    /**
+     * @notice Executes enableYeildWalletFactory function
+     * @param _factory Address of the factory
+     */
+    function executeEnableYeildWalletFactory(address _factory)
+        external
+        onlyGovernance
+    {
+        require(enableYeildWalletFactoryDates[_factory] != 0, 'ID');
+        require(
+            enableYeildWalletFactoryDates[_factory] + 3 days < block.timestamp,
+            'WD'
+        );
+        isValidYieldWalletFactory[_factory] = true;
     }
 
     /**
@@ -274,6 +292,7 @@ contract UnboundVaultManager {
         onlyGovernance
     {
         isValidYieldWalletFactory[_factory] = false;
+        enableYeildWalletFactoryDates[_factory] = 0;
         emit DisableYieldFactory(_factory);
     }
 }

@@ -111,10 +111,13 @@ describe("UnboundToken", function() {
 
         await ethDaiVault.changeLTV(LTV)
         await ethDaiVault.changeCR(CR)
+        
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
-
         await vaultFactory.enableVault(ethDaiVault.address);
+
         await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+        await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
         await vaultFactory.executeEnableVault(ethDaiVault.address);
 
         await und.addMinter(vaultFactory.address);
@@ -174,6 +177,14 @@ describe("UnboundToken", function() {
             await und.changeGovernance(signers[1].address);
             await und.connect(signers[1]).acceptGovernance()
             expect(await und.governance()).to.equal(signers[1].address);
+        });
+        it("should emit accept governance event", async () => {
+            await und.changeGovernance(signers[1].address);
+
+            await expect(
+                und.connect(signers[1]).acceptGovernance())
+                .to.emit(und, "AcceptGovernance")
+                .withArgs(signers[1].address)
         });
     });
 

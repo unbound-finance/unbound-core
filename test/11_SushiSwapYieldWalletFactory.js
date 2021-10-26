@@ -145,10 +145,13 @@ describe('SushiSwapYieldWalletFactory', function () {
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
 
-    await vaultFactory.enableVault(ethDaiVault.address)
+    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
+    await vaultFactory.enableVault(ethDaiVault.address);
+
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+    await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
     
     await und.addMinter(vaultFactory.address)
@@ -258,6 +261,15 @@ describe('SushiSwapYieldWalletFactory', function () {
       await yieldWalletFactory.setPids([ethDaiPair.address], [1]);
 
       expect(await yieldWalletFactory.pids(ethDaiPair.address)).to.eq("1");
+
+    })
+
+    it('should emit set pids event', async function () {
+
+      await expect(yieldWalletFactory.setPids([ethDaiPair.address], [1]))
+        .to.emit(yieldWalletFactory, "SetPids")
+        .withArgs([ethDaiPair.address], [1]);
+
 
     })
   
