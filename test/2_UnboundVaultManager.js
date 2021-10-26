@@ -112,9 +112,11 @@ describe("UnboundVaultManager", function() {
         ethDaiPair = await ethers.getContractAt("UniswapV2Pair", ethDaiPair);
 
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
-
         await vaultFactory.enableVault(ethDaiVault.address);
+
         await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+        await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
         await vaultFactory.executeEnableVault(ethDaiVault.address);
 
         await und.addMinter(vaultFactory.address);
@@ -186,6 +188,22 @@ describe("UnboundVaultManager", function() {
 
         });
 
+        it("should emit claim tokens event", async function() { 
+            await tEth.transfer(ethDaiVault.address, "1000");
+
+            // expect(await tEth.balanceOf(ethDaiVault.address)).to.equal("1000");
+            // expect(await tEth.balanceOf(signers[1].address)).to.equal("0");
+
+            await expect(ethDaiVault.claim(tEth.address, signers[1].address))
+                .to.emit(ethDaiVault, "ClaimTokens")
+                .withArgs(
+                    tEth.address,
+                    signers[1].address,
+                    "1000"
+                );
+
+        });
+
     });
 
     describe("#changeManager", async () => {
@@ -198,6 +216,10 @@ describe("UnboundVaultManager", function() {
                     .connect(signers[1].address)
                     .changeManager(signers[1].address))
                     .to.be.reverted;
+        });
+        it("should revert if input address is zero address", async function() { 
+            await expect(ethDaiVault.changeManager(zeroAddress))
+                .to.be.revertedWith("IA");
         });
         it("should change manager address", async function() { 
             await ethDaiVault.changeManager(signers[1].address)
@@ -214,6 +236,10 @@ describe("UnboundVaultManager", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).changeGovernance(signers[1].address))
                 .to.be.revertedWith("NA");
+        });
+        it("should revert if input address is zero address", async function() { 
+            await expect(ethDaiVault.changeGovernance(zeroAddress))
+                .to.be.revertedWith("IA");
         });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeGovernance(signers[1].address);
@@ -292,6 +318,12 @@ describe("UnboundVaultManager", function() {
                 .changeLTV(LTV))
                 .to.be.reverted;
         });
+        it("should revert if LTV is greater sthen second base(1e8)", async function() { 
+            await expect(
+                ethDaiVault
+                .changeLTV("100000001"))
+                .to.be.reverted;
+        });
         it("should set LTV vaule if caller is governance", async function() { 
             await ethDaiVault.connect(signers[0]).changeLTV(LTV)
             expect(await ethDaiVault.LTV()).to.equal(LTV);
@@ -330,6 +362,10 @@ describe("UnboundVaultManager", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).changeTeamFeeAddress(signers[1].address))
                 .to.be.revertedWith("NA");
+        });
+        it("should revert if input address is zero address", async function() { 
+            await expect(ethDaiVault.changeTeamFeeAddress(zeroAddress))
+                .to.be.revertedWith("IA");
         });
         it("should set pending governance as new governance address", async () => {
             await ethDaiVault.changeTeamFeeAddress(signers[1].address);
@@ -466,6 +502,7 @@ describe("UnboundVaultManager", function() {
             let distribute = await ethDaiVault.distributeFee()
 
             expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "274003877709787165"); // 100% of vault balance
+            expect(distribute).to.emit(ethDaiVault, "DistributeFee").withArgs("274003877709787165");
 
 
             expect((await und.balanceOf(ethDaiVault.address)).toString()).to.be.equal("0") // 0% remaining in contract balance
@@ -489,6 +526,7 @@ describe("UnboundVaultManager", function() {
 
             expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[2].address, "109601551083914866"); // 40% of vault balance
             expect(distribute).to.emit(und, "Transfer").withArgs(ethDaiVault.address, signers[1].address, "164402326625872299"); // 60% of vault balance
+            expect(distribute).to.emit(ethDaiVault, "DistributeFee").withArgs("274003877709787165");
 
         });
     })
@@ -500,6 +538,9 @@ describe("UnboundVaultManager", function() {
         });
         it("should enable factory wallet address", async () => {
             await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+            await ethDaiVault.executeEnableYeildWalletFactory(signers[2].address);
+
             expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
         });
         it("should emit enable yield factory event", async function() { 
@@ -509,20 +550,65 @@ describe("UnboundVaultManager", function() {
         });
     })
 
+    describe("#executeEnableYeildWalletFactory", function() {
+
+        it("should revert if date is not set for vault", async function() { 
+
+            await expect(
+                ethDaiVault.executeEnableYeildWalletFactory(signers[3].address)
+            ).to.be.revertedWith('ID');
+    
+        })
+
+        it("should revert if executeEnableVault before 3 days after enableVault", async function() { 
+
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+
+            await expect(
+                ethDaiVault.executeEnableYeildWalletFactory(signers[2].address)
+            ).to.be.revertedWith('WD');
+
+        });
+
+        it("should enable yield wallet factory", async function() { 
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+            await ethDaiVault.executeEnableYeildWalletFactory(signers[2].address);
+
+            expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
+        })
+
+    })
+
     describe("#disableYieldWalletFactory", function() {
         it("should revert if not called by governance", async function() { 
             await expect(ethDaiVault.connect(signers[1]).disableYieldWalletFactory(signers[2].address))
                 .to.be.revertedWith("NA");
         });
-        it("should enable factory wallet address", async () => {
+        it("should disable factory wallet address", async () => {
             await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+            await ethDaiVault.executeEnableYeildWalletFactory(signers[2].address);
+
             expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
 
             await ethDaiVault.disableYieldWalletFactory(signers[2].address);
             expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(false);
         });
+        it("should set enableYeildWalletFactoryDates date to zero", async () => {
+            await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+            await ethDaiVault.executeEnableYeildWalletFactory(signers[2].address);
+
+            expect(await ethDaiVault.isValidYieldWalletFactory(signers[2].address)).to.equal(true);
+
+            await ethDaiVault.disableYieldWalletFactory(signers[2].address);
+            expect(await ethDaiVault.enableYeildWalletFactoryDates(signers[2].address)).to.equal(0);
+        });
         it("should emit disable yield factory event", async function() { 
             await ethDaiVault.enableYieldWalletFactory(signers[2].address);
+            await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+            await ethDaiVault.executeEnableYeildWalletFactory(signers[2].address);
 
             await expect(ethDaiVault.disableYieldWalletFactory(signers[2].address))
                 .to.emit(ethDaiVault, "DisableYieldFactory")

@@ -80,6 +80,10 @@ describe("UniswapV2VaultFactory", function() {
             await expect(vaultFactory.connect(signers[1]).changeGovernance(signers[1].address))
                 .to.be.revertedWith("NA");
         });
+        it("should revert if input address is zero address", async function() { 
+            await expect(vaultFactory.changeGovernance(zeroAddress))
+                .to.be.revertedWith("IA");
+        });
         it("should set pending governance as new governance address", async () => {
             await vaultFactory.changeGovernance(signers[1].address);
             expect(await vaultFactory.pendingGovernance()).to.equal(signers[1].address);
@@ -108,9 +112,32 @@ describe("UniswapV2VaultFactory", function() {
             await vaultFactory.connect(signers[1]).acceptGovernance()
             expect(await vaultFactory.governance()).to.equal(signers[1].address);
         });
+        it("should emit accept governance event", async () => {
+            await vaultFactory.changeGovernance(signers[1].address);
+            await 
+            await expect(vaultFactory.connect(signers[1]).acceptGovernance())
+                    .to.emit(vaultFactory, "AcceptGovernance")
+                    .withArgs(signers[1].address)
+        });
   });
 
   describe("#createVault", async () => {
+
+    it("should revert if caller is not governance", async () => {
+
+        await expect(vaultFactory.connect(signers[1]).createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        )).of.be.revertedWith('NA');
+
+    });
+
     it("should create vault with valid index", async () => {
         await vaultFactory.createVault(
             und.address,
@@ -191,6 +218,48 @@ describe("UniswapV2VaultFactory", function() {
     //     ).to.be.reverted;
     // });
 
+    it("should set enableDates for vault", async () => {
+
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        let result = await vaultFactory.enableVault(vault);
+
+        let timestamp = (await ethers.provider.getBlock(result.blockNumber)).timestamp
+
+        expect(await vaultFactory.enableDates(vault)).to.be.equal(timestamp);
+
+    });
+
+    it("should emit enableDates event", async () => {
+
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        await expect(vaultFactory.enableVault(vault)).to.emit(vaultFactory, "EnableVault").withArgs(vault);
+
+    });
+
     it("should allow vault", async () => {
 
         await vaultFactory.createVault(
@@ -236,6 +305,63 @@ describe("UniswapV2VaultFactory", function() {
 
   })
 
+  describe("#executeEnableVault", async () => {
+
+    it("should revert if date is not set for vault", async function() { 
+
+        await expect(
+            vaultFactory.executeEnableVault(zeroAddress)
+        ).to.be.revertedWith('ID');
+
+    })
+
+    it("should revert if executeEnableVault before 3 days after enableVault", async function() { 
+
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        await vaultFactory.enableVault(vault);
+
+        await expect(
+            vaultFactory.executeEnableVault(vault)
+        ).to.be.revertedWith('WD');
+        
+    })
+
+    it("should allow vault", async function() { 
+
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        await vaultFactory.enableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(vault);
+    
+        expect(await vaultFactory.allowed(vault)).to.be.equal(true);
+        
+    })
+  })
+
   describe("#disableVault", async () => {
     let vault;
 
@@ -266,12 +392,33 @@ describe("UniswapV2VaultFactory", function() {
         ).to.be.revertedWith('NA');
     });
 
+    it("should disableDates for vault", async () => {
+
+        expect(await vaultFactory.allowed(vault)).to.be.equal(true);
+
+        let result = await vaultFactory.disableVault(vault);
+
+        let timestamp = (await ethers.provider.getBlock(result.blockNumber)).timestamp
+
+        expect(await vaultFactory.disableDates(vault)).to.be.equal(timestamp);
+
+    });
+
+
+    it("should emit disableDates event", async () => {
+
+        expect(await vaultFactory.allowed(vault)).to.be.equal(true);
+
+        await expect(vaultFactory.disableVault(vault)).to.emit(vaultFactory, "DisableVault").withArgs(vault);
+
+    });
+
     it("should disable vault", async () => {
 
         expect(await vaultFactory.allowed(vault)).to.be.equal(true);
 
         await vaultFactory.disableVault(vault);
-        await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
         await vaultFactory.executeDisableVault(vault);
         
         expect(await vaultFactory.allowed(vault)).to.be.equal(false);
@@ -285,6 +432,70 @@ describe("UniswapV2VaultFactory", function() {
             .withArgs(vault);
     })
 
+  })
+
+  describe("#executeDisableVault", async () => {
+
+    let vault;
+
+    beforeEach(async function () {
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        vault = await vaultFactory.vaultByIndex(1);
+
+        await vaultFactory.enableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(vault);
+    
+    })
+
+
+    it("should revert if date is not set for vault", async function() { 
+
+        await expect(
+            vaultFactory.executeDisableVault(zeroAddress)
+        ).to.be.revertedWith('ID');
+
+    })
+
+    it("should revert if executeDisableVault before 3 days after disableVault", async function() { 
+
+        await vaultFactory.disableVault(vault);
+
+        await expect(
+            vaultFactory.executeDisableVault(vault)
+        ).to.be.revertedWith('WD');
+        
+    })
+
+    it("should disallow vault", async function() { 
+
+        await vaultFactory.disableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeDisableVault(vault);
+    
+        expect(await vaultFactory.allowed(vault)).to.be.equal(false);
+        
+    })
+
+    it("should set disable date to zero", async function() { 
+
+        await vaultFactory.disableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeDisableVault(vault);
+    
+        expect(await vaultFactory.disableDates(vault)).to.be.equal(0);
+        
+    })
   })
 
   describe("#setPause", async () => {
