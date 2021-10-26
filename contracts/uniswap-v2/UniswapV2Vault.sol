@@ -8,6 +8,7 @@ import '../libraries/UniswapV2PriceProvider.sol';
 //  import interfaces
 import '../interfaces/IUnboundYieldWallet.sol';
 import '../interfaces/IUnboundYieldWalletFactory.sol';
+import '../interfaces/IMigratorVault.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 
 // contracts
@@ -21,6 +22,8 @@ contract UniswapV2Vault is UnboundVaultBase {
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
     address[] public feeds;
+
+    IMigratorVault public migrator; // Instance of new vault contract
 
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
@@ -351,5 +354,40 @@ contract UniswapV2Vault is UnboundVaultBase {
         pair.transfer(msg.sender, userCollateral);
         burn(msg.sender, userDebt);
         emit Unlock(msg.sender, userCollateral, userDebt);
+    }
+
+    /**
+     * @notice Set new vault contract
+     * @param _migrator Address of the new vault contract
+     */
+    function setMigrator(address _migrator) public onlyGovernance {
+        migrator = IMigratorVault(_migrator);
+    } 
+
+    /**
+     * @notice Disable this vault contract and transfer assets to new vault contract
+     * @param _farming Address of yield wallet factory where LPs will be staked automatically. Pass address zero if don't want to stake LP
+     */
+    function migrate(address _farming) public {
+        require(address(migrator) != address(0), "migrate: no migrator");
+
+        if(pair.allowance(address(this), address(migrator)) != type(uint).max){
+            pair.approve(address(migrator), type(uint).max);
+        }
+
+        migrator.update(
+            msg.sender,
+            collateral[msg.sender], 
+            debt[msg.sender], 
+            yieldWallet[msg.sender], 
+            yieldWalletDeposit[msg.sender],
+            _farming
+        );
+
+        collateral[msg.sender] = 0;
+        debt[msg.sender] = 0;
+        yieldWallet[msg.sender] = address(0);
+        yieldWalletDeposit[msg.sender] = 0;
+
     }
 }
