@@ -175,9 +175,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -227,9 +228,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -247,7 +249,7 @@ describe('SushiSwapYieldWallet', function () {
       ).to.be.revertedWith('NA')
     })
 
-    it('should deposit event on lock LPT', async function () {
+    it('should deposit event on stake LPT', async function () {
 
       let lockAmount = ethers.utils.parseEther('2').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -255,9 +257,10 @@ describe('SushiSwapYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
@@ -271,11 +274,11 @@ describe('SushiSwapYieldWallet', function () {
         signers[0]
       )
 
-      expect(lock).to.emit(yieldwallet, "Deposit").withArgs(pid, lockAmount)
+      expect(stake).to.emit(yieldwallet, "Deposit").withArgs(pid, lockAmount)
 
     })
 
-    it('lock - should increase yieldWalletDeposit amount on lock LPT', async function () {
+    it('lock - should increase yieldWalletDeposit amount on stake LPT', async function () {
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
@@ -285,16 +288,17 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(lockAmount)
     })
 
-    it('lock - should transfer LPT to farming contract on lock LPT', async function () {
+    it('lock - should transfer LPT to farming contract on stake LPT', async function () {
 
       let lockAmount1 = ethers.utils.parseEther('0.1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount1)
@@ -302,9 +306,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount1,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       ) // to create yield wallet for user
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount1, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let balanceBefore = (await ethDaiPair.balanceOf(masterchef.address)).toString()
@@ -318,9 +323,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount2,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount2, false);
       
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(lockAmount2)
@@ -338,9 +344,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -366,15 +373,16 @@ describe('SushiSwapYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
 
-      expect(lock).to.emit(masterchef, "Deposit").withArgs(wallet, pid, lockAmount)
+      expect(stake).to.emit(masterchef, "Deposit").withArgs(wallet, pid, lockAmount)
 
     })
 
@@ -386,19 +394,20 @@ describe('SushiSwapYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
       expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(signers[0].address, ethDaiVault.address, lockAmount)
-      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
-      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(wallet, masterchef.address, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, masterchef.address, lockAmount)
 
     })
 
-    it('lock - should transfer reward sushi token to user if pending while deposit ', async function () {
+    it('lock - should transfer reward sushi token to user if pending while staking ', async function () {
 
       let lockAmount = ethers.utils.parseEther('2').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -406,9 +415,11 @@ describe('SushiSwapYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+      
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -416,17 +427,17 @@ describe('SushiSwapYieldWallet', function () {
       let lock2 = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
 
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, false);
 
-      expect(lock2).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "200000000000000000000")
-      expect(lock2).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "200000000000000000000")
+      expect(stake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "300000000000000000000")
+      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "300000000000000000000")
 
     })
 
-    it('lockWithPermit - should increase yieldWalletDeposit amount on lock LPT', async function () {
+    it('lockWithPermit - should increase yieldWalletDeposit amount on stake LPT', async function () {
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
@@ -448,14 +459,16 @@ describe('SushiSwapYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
 
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(permitAmount)
     })
 
-    it('lockWithPermit - should transfer LPT to yield wallet on lock LPT', async function () {
+    it('lockWithPermit - should transfer LPT to yield wallet on stake LPT', async function () {
       let balanceBefore = (await ethDaiPair.balanceOf(masterchef.address)).toString()
 
       const { chainId } = await ethers.provider.getNetwork()
@@ -475,7 +488,9 @@ describe('SushiSwapYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
 
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(permitAmount)
@@ -503,8 +518,10 @@ describe('SushiSwapYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
   
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
   
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let SushiSwapYieldWallet = await ethers.getContractFactory(
@@ -522,7 +539,7 @@ describe('SushiSwapYieldWallet', function () {
   
     })
   
-    it('lockWithPermit - should emit deposit event while locking LPTs', async function () {
+    it('lockWithPermit - should emit deposit event while staking LPTs', async function () {
   
       const { chainId } = await ethers.provider.getNetwork()
   
@@ -541,14 +558,15 @@ describe('SushiSwapYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
   
-      let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
   
-  
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
   
   
-      expect(lock).to.emit(masterchef, "Deposit").withArgs(wallet, pid, permitAmount)
+      expect(stake).to.emit(masterchef, "Deposit").withArgs(wallet, pid, permitAmount)
   
     })
   
@@ -559,7 +577,9 @@ describe('SushiSwapYieldWallet', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, yieldWalletFactory.address, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -568,7 +588,7 @@ describe('SushiSwapYieldWallet', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, yieldWalletFactory.address, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
@@ -588,29 +608,25 @@ describe('SushiSwapYieldWallet', function () {
       await expect(yieldwallet.withdraw("1")).to.be.revertedWith('NA')
     })
 
-    it('should decrese yieldWalletDeposit amount on unlock LPT', async function () {
+    it('should decrese yieldWalletDeposit amount on unstake LPT', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(lockAmount)
 
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await ethDaiVault.unlock(
-        debt,
-        collateral,
-      )
+      await ethDaiVault.unstakeLP(collateral);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal("0")    
     })
 
-    it("should transfer LPT back to user from farming wallet to user on unlock LPT", async function() {
+    it("should transfer LPT back to user from farming wallet to user on unstake LPT", async function() {
       
       let lockAmount = ethers.utils.parseEther('1').toString()
 
@@ -618,21 +634,20 @@ describe('SushiSwapYieldWallet', function () {
 
       expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
 
-      let balanceBeforeUser = (await ethDaiPair.balanceOf(signers[0].address)).toString()
+      let balanceBeforeVault = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
       let balanceBeforeFarming = (await ethDaiPair.balanceOf(masterchef.address)).toString()
       let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
 
       expect(balanceBeforeWallet).to.be.equal("0")
 
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
 
-      await ethDaiVault.unlock(debt, collateral);
+      await ethDaiVault.unstakeLP(collateral);
 
-      let balanceAfterUser = (new BigNumber(balanceBeforeUser).plus(collateral)).toFixed()
+      let balanceAfterVault = (new BigNumber(balanceBeforeVault).plus(collateral)).toFixed()
       let balanceAfterFarming = (new BigNumber(balanceBeforeFarming).minus(collateral)).toFixed()
 
-      expect(await ethDaiPair.balanceOf(signers[0].address)).to.be.equal(balanceAfterUser)
+      expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.be.equal(balanceAfterVault)
       expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfterFarming)
       expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceBeforeWallet)
 
@@ -653,10 +668,9 @@ describe('SushiSwapYieldWallet', function () {
       
       let infoBefore = await yieldwallet.getWalletInfo();
       
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      await ethDaiVault.unlock(debt, collateral);
+      await ethDaiVault.unstakeLP(collateral);
       
       let infoAfter = await yieldwallet.getWalletInfo();
       let infoAfterExpected = new BigNumber(infoBefore.amount.toString()).minus(collateral).toFixed();
@@ -665,47 +679,47 @@ describe('SushiSwapYieldWallet', function () {
 
     })
 
-    it('unlock - should emit withdraw event while unlocking LPTs', async function () {
+    it('unlock - should emit withdraw event while unstaking LPTs', async function () {
 
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let unstake = await ethDaiVault.unstakeLP(collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
 
-      expect(unlock).to.emit(masterchef, "Withdraw").withArgs(wallet, pid, collateral)
+      expect(unstake).to.emit(masterchef, "Withdraw").withArgs(wallet, pid, collateral)
 
     })
 
-    it('unlock - should emit proper transfer event while unlocking LPTs', async function () {
+    it('unlock - should emit proper transfer event while unlock LPTs', async function () {
 
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let unstake = await ethDaiVault.unstakeLP(collateral);
+      let unlock = await ethDaiVault.unlock(debt, collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(masterchef.address, wallet, collateral)
-      expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(masterchef.address, wallet, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
       expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, signers[0].address, collateral)
 
     })
 
-    it('unlock - should transfer sushi reward to user while unlocking', async function () {
-
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
-      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+    it('unlock - should transfer sushi reward to user while unstaking', async function () {
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      let unstake = await ethDaiVault.unstakeLP(collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      expect(unlock).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "400000000000000000000")
-      expect(unlock).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "400000000000000000000")
+      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "500000000000000000000")
+      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "500000000000000000000")
 
     })
   })
@@ -717,9 +731,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -745,9 +760,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
@@ -775,10 +791,11 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
-  
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+      
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let SushiSwapYieldWallet = await ethers.getContractFactory(
@@ -810,9 +827,10 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   

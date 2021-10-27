@@ -464,7 +464,7 @@ describe("UnboundVaultManager", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
 
         })
 

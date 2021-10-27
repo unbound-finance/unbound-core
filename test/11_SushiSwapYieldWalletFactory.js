@@ -195,7 +195,7 @@ describe('SushiSwapYieldWalletFactory', function () {
       )
     })
 
-    it('should create new yield wallet for first time user locking LPT', async function () {
+    it('should create new yield wallet for first time user staking LPT', async function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -207,9 +207,10 @@ describe('SushiSwapYieldWalletFactory', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.not.equal(
         zeroAddress
@@ -224,13 +225,14 @@ describe('SushiSwapYieldWalletFactory', function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
-      await expect(ethDaiVault.lock(
+      await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
-      )).to.emit(yieldWalletFactory, "YeildWalletFactory")
+      )
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true))
+        .to.emit(yieldWalletFactory, "YeildWalletFactory")
       
     })
   })

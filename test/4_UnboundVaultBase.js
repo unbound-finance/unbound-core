@@ -144,7 +144,7 @@ describe('UnboundVaultBase', function () {
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, zeroAddress, zeroAddress, '1')
+        ethDaiVault.lock(lockAmount, zeroAddress, '1')
       ).to.be.revertedWith('NO')
     })
 
@@ -158,7 +158,7 @@ describe('UnboundVaultBase', function () {
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+        ethDaiVault.lock(lockAmount, signers[0].address, '1')
       ).to.be.revertedWith('NA')
     })
 
@@ -170,7 +170,7 @@ describe('UnboundVaultBase', function () {
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+        ethDaiVault.lock(lockAmount, signers[0].address, '10')
       ).to.be.revertedWith('LE')
     })
 
@@ -183,7 +183,7 @@ describe('UnboundVaultBase', function () {
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '10')
 
       expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
 
@@ -198,13 +198,13 @@ describe('UnboundVaultBase', function () {
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '10')
 
       expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '10')
 
       expect(await ethDaiVault.uTokenMinted()).to.equal("113137084989847603904")
 
@@ -220,14 +220,14 @@ describe('UnboundVaultBase', function () {
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '10')
 
       expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952")
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+        ethDaiVault.lock(lockAmount, signers[0].address, '10')
       ).to.be.revertedWith('LE')
 
     })
@@ -243,7 +243,7 @@ describe('UnboundVaultBase', function () {
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '10')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '10')
 
       expect(await ethDaiVault.uTokenMinted()).to.equal("56568542494923801952") // 56568542494923801952
 
@@ -293,7 +293,6 @@ describe('UnboundVaultBase', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -355,7 +354,6 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -400,7 +398,6 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -413,7 +410,6 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -457,7 +453,6 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -494,7 +489,6 @@ describe('UnboundVaultBase', function () {
       await ethDaiVault.lock(
         lockAmount2,
         signers[0].address,
-        zeroAddress,
         finalMintAmount2
       )
 
@@ -511,7 +505,7 @@ describe('UnboundVaultBase', function () {
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -520,7 +514,7 @@ describe('UnboundVaultBase', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
 
     })

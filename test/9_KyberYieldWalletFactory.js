@@ -166,6 +166,7 @@ describe('KyberYieldWalletFactory', function () {
 
     await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
+
     await und.addMinter(vaultFactory.address)
     await ethers.provider.send('evm_increaseTime', [604800]) // increase evm time by 7 days
     await und.enableMinter(vaultFactory.address);
@@ -206,7 +207,7 @@ describe('KyberYieldWalletFactory', function () {
       )
     })
 
-    it('should create new yield wallet for first time user locking LPT', async function () {
+    it('should create new yield wallet for first time user staking LPT', async function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -218,16 +219,17 @@ describe('KyberYieldWalletFactory', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.not.equal(
         zeroAddress
       )
     })
 
-    it('should emit event when creating new yield wallet for first time user locking LPT', async function () {
+    it('should emit event when creating new yield wallet for first time user staking LPT', async function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -236,12 +238,14 @@ describe('KyberYieldWalletFactory', function () {
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
-      await expect(ethDaiVault.lock(
+      await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
-      )).to.emit(yieldWalletFactory, "YeildWalletFactory")
+      )
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true)
+        ).to.emit(yieldWalletFactory, "YeildWalletFactory")
       
     })
   })
