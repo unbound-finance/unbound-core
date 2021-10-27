@@ -233,7 +233,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         // check if it's valid farming address
         require(isValidYieldWalletFactory[_farming], 'IN');
         
-        require(collateral[msg.sender] <= _amount, 'Invalid amount');
+        require(collateral[msg.sender] >= _amount, 'Invalid amount');
 
         if(_createNewWallet == true && yieldWallet[msg.sender] != address(0)){
             require(yieldWalletDeposit[msg.sender] == 0, 'Please unstake your current staked LP first.');
