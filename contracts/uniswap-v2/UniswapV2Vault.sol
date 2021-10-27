@@ -100,7 +100,6 @@ contract UniswapV2Vault is UnboundVaultBase {
      * @notice Lock pool token with the permit signature
      * @param _amount Amount of pool tokens to lock
      * @param _mintTo Address to which the UND should be minted
-     * @param _farming Farming address
      * @param _minUTokenAmount Minimium amount of uTokens to receive
      * @param _deadline Deadline of the permit signature
      * @param _v V part of the signature
@@ -110,16 +109,12 @@ contract UniswapV2Vault is UnboundVaultBase {
     function lockWithPermit(
         uint256 _amount,
         address _mintTo,
-        address _farming,
         uint256 _minUTokenAmount,
         uint256 _deadline,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external returns (uint256 amount) {
-        // check if it's valid farming address
-        require(isValidYieldWalletFactory[_farming], 'IN');
-
         // get approval using permit
         pair.permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
 
@@ -129,27 +124,6 @@ contract UniswapV2Vault is UnboundVaultBase {
         // lock pool tokens and mint uTokens
         (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
 
-        // deploy to yield wallet if required
-        if (_farming != address(0)) {
-            if (yieldWallet[msg.sender] == address(0)) {
-                // create vault
-                address wallet = IUnboundYieldWalletFactory(_farming).create(
-                    address(pair),
-                    msg.sender,
-                    address(this)
-                );
-                yieldWallet[msg.sender] = wallet;
-            }
-
-            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].add(
-                _amount
-            );
-            // transfer tokens to the vault
-            pair.transfer(yieldWallet[msg.sender], _amount);
-            // deposit to yield
-            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
-        }
-
         emit Lock(msg.sender, _amount, amount);
     }
 
@@ -157,41 +131,15 @@ contract UniswapV2Vault is UnboundVaultBase {
      * @notice Lock pool tokens without permit
      * @param _amount Amount of pool tokens to lock
      * @param _mintTo Address to which the UND should be minted
-     * @param _farming Farming address
      * @param _minUTokenAmount Minimum uTokens to receive
      */
     function lock(
         uint256 _amount,
         address _mintTo,
-        address _farming,
         uint256 _minUTokenAmount
     ) external returns (uint256 amount) {
-        // check if it's valid farming address
-        require(isValidYieldWalletFactory[_farming], 'IN');
-
         // lock pool tokens and mint amount
-        (amount) = _lock(_amount, _mintTo, _minUTokenAmount);
-
-        // deploy to yield wallet if required
-        if (_farming != address(0)) {
-            if (yieldWallet[msg.sender] == address(0)) {
-                // create vault
-                address wallet = IUnboundYieldWalletFactory(_farming).create(
-                    address(pair),
-                    msg.sender,
-                    address(this)
-                );
-                yieldWallet[msg.sender] = wallet;
-            }
-
-            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].add(
-                _amount
-            );
-            // transfer tokens to the vault
-            pair.transfer(yieldWallet[msg.sender], _amount);
-            // deposit to yield
-            IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
-        }
+        (amount) = _lock(_amount, _mintTo, _minUTokenAmount);  
 
         emit Lock(msg.sender, _amount, amount);
     }
@@ -260,19 +208,13 @@ contract UniswapV2Vault is UnboundVaultBase {
         burn(msg.sender, _uTokenAmount);
 
         if (yieldWalletDeposit[msg.sender] > 0) {
-            // remove LP tokens from yield wallet first
-            uint256 balanceBefore = pair.balanceOf(address(this));
-            IUnboundYieldWallet(yieldWallet[msg.sender]).withdraw(amount);
-            uint256 balanceAfter = pair.balanceOf(address(this));
+
+            amount = _unstakeLP(msg.sender, amount);
 
             // transfer pool tokens back to the user
-            pair.transfer(msg.sender, balanceAfter.sub(balanceBefore));
+            pair.transfer(msg.sender, amount);
 
-            amount = balanceAfter.sub(balanceBefore);
 
-            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].sub(
-                amount
-            );
         } else {
             // give the pool tokens back
             pair.transfer(msg.sender, amount);
@@ -281,6 +223,67 @@ contract UniswapV2Vault is UnboundVaultBase {
         require(_minCollateral <= amount, 'MIN');
 
         emit Unlock(msg.sender, amount, _uTokenAmount);
+    }
+
+    function stakeLP(address _farming, uint256 _amount, bool _createNewWallet) 
+        external 
+        validAddress(_farming) 
+    {
+
+        // check if it's valid farming address
+        require(isValidYieldWalletFactory[_farming], 'IN');
+        
+        require(collateral[msg.sender] <= _amount, 'Invalid amount');
+
+        if(_createNewWallet == true && yieldWallet[msg.sender] != address(0)){
+            require(yieldWalletDeposit[msg.sender] == 0, 'Please unstake your current staked LP first.');
+        }
+
+        if (yieldWallet[msg.sender] == address(0) || _createNewWallet == true) {
+            // create vault
+            address wallet = IUnboundYieldWalletFactory(_farming).create(
+                address(pair),
+                msg.sender,
+                address(this)
+            );
+            yieldWallet[msg.sender] = wallet;
+        }
+
+        yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].add(
+            _amount
+        );
+        // transfer tokens to the vault
+        pair.transfer(yieldWallet[msg.sender], _amount);
+        // deposit to yield
+        IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
+
+    }
+
+    function unstakeLP(uint256 _amount) 
+        external 
+    {
+
+        _unstakeLP(msg.sender, _amount);
+
+    }
+
+    function _unstakeLP(address _user, uint256 _amount) 
+        internal 
+        returns(uint256 amount)
+    {
+
+        require(yieldWalletDeposit[_user] <= _amount, 'Invalid amount');
+
+        // remove LP tokens from yield wallet first
+        uint256 balanceBefore = pair.balanceOf(address(this));
+        IUnboundYieldWallet(yieldWallet[_user]).withdraw(_amount);
+        uint256 balanceAfter = pair.balanceOf(address(this));
+
+        amount = balanceAfter.sub(balanceBefore);
+
+        yieldWalletDeposit[_user] = yieldWalletDeposit[_user].sub(
+            amount
+        );
     }
 
     /**
