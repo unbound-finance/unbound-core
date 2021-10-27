@@ -205,19 +205,13 @@ contract UniswapV2Vault is UnboundVaultBase {
         burn(msg.sender, _uTokenAmount);
 
         if (yieldWalletDeposit[msg.sender] > 0) {
-            // remove LP tokens from yield wallet first
-            uint256 balanceBefore = pair.balanceOf(address(this));
-            IUnboundYieldWallet(yieldWallet[msg.sender]).withdraw(amount);
-            uint256 balanceAfter = pair.balanceOf(address(this));
+
+            amount = _unstakeLP(msg.sender, amount);
 
             // transfer pool tokens back to the user
-            pair.transfer(msg.sender, balanceAfter.sub(balanceBefore));
+            pair.transfer(msg.sender, amount);
 
-            amount = balanceAfter.sub(balanceBefore);
 
-            yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].sub(
-                amount
-            );
         } else {
             // give the pool tokens back
             pair.transfer(msg.sender, amount);
@@ -266,17 +260,27 @@ contract UniswapV2Vault is UnboundVaultBase {
         external 
     {
 
-        require(yieldWalletDeposit[msg.sender] <= _amount, 'Invalid amount');
+        _unstakeLP(msg.sender, _amount);
+
+    }
+
+    function _unstakeLP(address _user, uint256 _amount) 
+        internal 
+        returns(uint256 amount)
+    {
+
+        require(yieldWalletDeposit[_user] <= _amount, 'Invalid amount');
 
         // remove LP tokens from yield wallet first
         uint256 balanceBefore = pair.balanceOf(address(this));
-        IUnboundYieldWallet(yieldWallet[msg.sender]).withdraw(_amount);
+        IUnboundYieldWallet(yieldWallet[_user]).withdraw(_amount);
         uint256 balanceAfter = pair.balanceOf(address(this));
 
-        yieldWalletDeposit[msg.sender] = yieldWalletDeposit[msg.sender].sub(
-            balanceAfter.sub(balanceBefore)
-        );
+        amount = balanceAfter.sub(balanceBefore);
 
+        yieldWalletDeposit[_user] = yieldWalletDeposit[_user].sub(
+            amount
+        );
     }
 
     /**
