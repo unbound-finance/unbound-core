@@ -190,9 +190,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -238,9 +239,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -258,7 +260,7 @@ describe('KyberYieldWallet', function () {
       ).to.be.revertedWith('NA')
     })
 
-    it('lock - should increase yieldWalletDeposit amount on lock LPT', async function () {
+    it('lock - should increase yieldWalletDeposit amount on stake LPT', async function () {
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
@@ -268,16 +270,17 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(lockAmount)
     })
 
-    it('lock - should transfer LPT to farming contract on lock LPT', async function () {
+    it('lock - should transfer LPT to farming contract on stake LPT', async function () {
 
       let lockAmount1 = ethers.utils.parseEther('0.1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount1)
@@ -285,9 +288,11 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount1,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount1, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let balanceBefore = (await ethDaiPair.balanceOf(kyberFairlaunch.address)).toString()
       let walletBalanceBefore = (await ethDaiPair.balanceOf(wallet)).toString()
@@ -300,9 +305,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount2,
         signers[0].address,
-        yieldWalletFactory.address,
         0
-        )
+      )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount2, false);
       
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(lockAmount2)
@@ -320,9 +326,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -349,19 +356,20 @@ describe('KyberYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
 
-      expect(lock).to.emit(kyberFairlaunch, "Deposit").withArgs(wallet, pid, lock.blockNumber, lockAmount)
+      expect(stake).to.emit(kyberFairlaunch, "Deposit").withArgs(wallet, pid, stake.blockNumber, lockAmount)
 
     })
 
-    it('lock - should emit proper transfer event while locking LPTs', async function () {
+    it('lock - should emit proper transfer event while locking and staking LPTs', async function () {
 
       let lockAmount = ethers.utils.parseEther('2').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -369,19 +377,20 @@ describe('KyberYieldWallet', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
       expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(signers[0].address, ethDaiVault.address, lockAmount)
-      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
-      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(wallet, kyberFairlaunch.address, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, kyberFairlaunch.address, lockAmount)
 
     })
 
-    it('lockWithPermit - should increase yieldWalletDeposit amount on lock LPT', async function () {
+    it('lockWithPermit - should increase yieldWalletDeposit amount on stake LPT', async function () {
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal('0')
@@ -403,14 +412,16 @@ describe('KyberYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
 
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(permitAmount)
     })
 
-    it('lockWithPermit - should transfer LPT to yield wallet on lock LPT', async function () {
+    it('lockWithPermit - should transfer LPT to yield wallet on stake LPT', async function () {
       let balanceBefore = (await ethDaiPair.balanceOf(kyberFairlaunch.address)).toString()
 
       const { chainId } = await ethers.provider.getNetwork()
@@ -430,7 +441,9 @@ describe('KyberYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
 
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(permitAmount)
@@ -458,8 +471,10 @@ describe('KyberYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
   
-      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
   
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let KyberYieldWallet = await ethers.getContractFactory(
@@ -477,7 +492,7 @@ describe('KyberYieldWallet', function () {
   
     })
   
-    it('lockWithPermit - should emit deposit event while locking LPTs', async function () {
+    it('lockWithPermit - should emit deposit event while staking LPTs', async function () {
   
       const { chainId } = await ethers.provider.getNetwork()
   
@@ -496,14 +511,15 @@ describe('KyberYieldWallet', function () {
       );
       const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams);
   
-      let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, yieldWalletFactory.address, "1", expiration, v, r, s)
+      let lock = await ethDaiVault.lockWithPermit(permitAmount, signers[0].address, "1", expiration, v, r, s)
   
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
   
   
-      expect(lock).to.emit(kyberFairlaunch, "Deposit").withArgs(wallet, pid, lock.blockNumber, permitAmount)
+      expect(stake).to.emit(kyberFairlaunch, "Deposit").withArgs(wallet, pid, stake.blockNumber, permitAmount)
   
     })
   
@@ -514,7 +530,9 @@ describe('KyberYieldWallet', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, yieldWalletFactory.address, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -523,7 +541,7 @@ describe('KyberYieldWallet', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, yieldWalletFactory.address, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
@@ -543,53 +561,50 @@ describe('KyberYieldWallet', function () {
       await expect(yieldwallet.withdraw("1")).to.be.revertedWith('NA')
     })
 
-    it('should decrese yieldWalletDeposit amount on unlock LPT', async function () {
+    it('should decrese yieldWalletDeposit amount on unstake LPT', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal(lockAmount)
 
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await ethDaiVault.unlock(
-        debt,
-        collateral,
-      )
+      await ethDaiVault.unstakeLP(collateral);
 
       expect(
         await ethDaiVault.yieldWalletDeposit(signers[0].address)
       ).to.be.equal("0")    
     })
 
-    it("should transfer LPT back to user from farming wallet to user on unlock LPT", async function() {
+    it("should transfer LPT back to vault from farming wallet to user on unstake LPT", async function() {
       
       let lockAmount = ethers.utils.parseEther('1').toString()
 
-        let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-        expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
+      expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
 
-        let balanceBeforeUser = (await ethDaiPair.balanceOf(signers[0].address)).toString()
-        let balanceBeforeFarming = (await ethDaiPair.balanceOf(kyberFairlaunch.address)).toString()
-        let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
+      let balanceBeforeVault = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+      let balanceBeforeFarming = (await ethDaiPair.balanceOf(kyberFairlaunch.address)).toString()
+      let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
 
-        expect(balanceBeforeWallet).to.be.equal("0")
+      expect(balanceBeforeWallet).to.be.equal("0")
 
-        let debt = (await ethDaiVault.debt(signers[0].address)).toString()
-        let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+      let collateral = (
+        await ethDaiVault.collateral(signers[0].address)
+      ).toString()
 
-        await ethDaiVault.unlock(debt, collateral);
+      await ethDaiVault.unstakeLP(lockAmount);
 
-        let balanceAfterUser = (new BigNumber(balanceBeforeUser).plus(collateral)).toFixed()
-        let balanceAfterFarming = (new BigNumber(balanceBeforeFarming).minus(collateral)).toFixed()
+      let balanceAfterVault = (new BigNumber(balanceBeforeVault).plus(collateral)).toFixed()
+      let balanceAfterFarming = (new BigNumber(balanceBeforeFarming).minus(collateral)).toFixed()
 
-        expect(await ethDaiPair.balanceOf(signers[0].address)).to.be.equal(balanceAfterUser)
-        expect(await ethDaiPair.balanceOf(kyberFairlaunch.address)).to.be.equal(balanceAfterFarming)
-        expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceBeforeWallet)
+      expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.be.equal(balanceAfterVault)
+      expect(await ethDaiPair.balanceOf(kyberFairlaunch.address)).to.be.equal(balanceAfterFarming)
+      expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceBeforeWallet)
 
     });
 
@@ -608,11 +623,10 @@ describe('KyberYieldWallet', function () {
       
       let infoBefore = await yieldwallet.getWalletInfo();
       
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      await ethDaiVault.unlock(debt, collateral);
-      
+      await ethDaiVault.unstakeLP(collateral);
+
       let infoAfter = await yieldwallet.getWalletInfo();
       let infoAfterExpected = new BigNumber(infoBefore.amount.toString()).minus(collateral).toFixed();
 
@@ -620,18 +634,16 @@ describe('KyberYieldWallet', function () {
 
     })
 
-    it('unlock - should emit withdraw event while unlocking LPTs', async function () {
+    it('unlock - should emit withdraw event while unstaking LPTs', async function () {
 
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let unstake = await ethDaiVault.unstakeLP(collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
-
-      expect(unlock).to.emit(kyberFairlaunch, "Withdraw").withArgs(wallet, pid, unlock.blockNumber, collateral)
+      expect(unstake).to.emit(kyberFairlaunch, "Withdraw").withArgs(wallet, pid, unstake.blockNumber, collateral)
 
     })
 
@@ -640,28 +652,28 @@ describe('KyberYieldWallet', function () {
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let unstake = await ethDaiVault.unstakeLP(collateral);
+      let unlock = await ethDaiVault.unlock(debt, collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(kyberFairlaunch.address, wallet, collateral)
-      expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(kyberFairlaunch.address, wallet, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
       expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, signers[0].address, collateral)
 
     })
 
-    it('unlock - should harvest reward while unlocking LPTs', async function () {
+    it('unlock - should harvest reward while unstaking LPTs', async function () {
 
-      let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
       
-      let  unlock = await ethDaiVault.unlock(debt, collateral);
+      let unstake = await ethDaiVault.unstakeLP(collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
       let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
-      expect(unlock).to.emit(kyberFairlaunch, "Harvest").withArgs(wallet, pid, kncRewardToken.address, "16824280000000000000", unlock.blockNumber)
-      expect(unlock).to.emit(kncRewardToken, "Transfer").withArgs(kyberFairlaunch.address, kyberRewardLocker.address, "16824280000000000000")
+      expect(unstake).to.emit(kyberFairlaunch, "Harvest").withArgs(wallet, pid, kncRewardToken.address, "21030350000000000000", unstake.blockNumber)
+      expect(unstake).to.emit(kncRewardToken, "Transfer").withArgs(kyberFairlaunch.address, kyberRewardLocker.address, "21030350000000000000")
 
     })
   })
@@ -673,9 +685,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -701,9 +714,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
@@ -733,9 +747,10 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
@@ -761,10 +776,11 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
-  
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let KyberYieldWallet = await ethers.getContractFactory(
@@ -801,10 +817,11 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
-  
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let KyberYieldWallet = await ethers.getContractFactory(
@@ -859,10 +876,11 @@ describe('KyberYieldWallet', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
-  
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
       let KyberYieldWallet = await ethers.getContractFactory(

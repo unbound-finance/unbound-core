@@ -111,13 +111,10 @@ describe("UnboundToken", function() {
 
         await ethDaiVault.changeLTV(LTV)
         await ethDaiVault.changeCR(CR)
-        
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
+
         await vaultFactory.enableVault(ethDaiVault.address);
-
         await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
-
-        await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
         await vaultFactory.executeEnableVault(ethDaiVault.address);
 
         await und.addMinter(vaultFactory.address);
@@ -177,14 +174,6 @@ describe("UnboundToken", function() {
             await und.changeGovernance(signers[1].address);
             await und.connect(signers[1]).acceptGovernance()
             expect(await und.governance()).to.equal(signers[1].address);
-        });
-        it("should emit accept governance event", async () => {
-            await und.changeGovernance(signers[1].address);
-
-            await expect(
-                und.connect(signers[1]).acceptGovernance())
-                .to.emit(und, "AcceptGovernance")
-                .withArgs(signers[1].address)
         });
     });
 
@@ -276,7 +265,7 @@ describe("UnboundToken", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
 
         })
 
@@ -328,7 +317,7 @@ describe("UnboundToken", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
 
         })
 
@@ -401,7 +390,7 @@ describe("UnboundToken", function() {
 
             await ethDaiPair.approve(ethDaiVault.address, "100");
 
-            await expect(ethDaiVault.lock("100", signers[0].address, zeroAddress, "1"))
+            await expect(ethDaiVault.lock("100", signers[0].address, "1"))
                 .to.be.revertedWith("NA");
         })
 
@@ -414,7 +403,7 @@ describe("UnboundToken", function() {
             let expectedMintAMount = "56568542494923801952";
             let balanceAfter = (new BigNumber(userBalBefore).plus(expectedMintAMount)).toFixed();
 
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1");
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1");
             
             expect(await und.balanceOf(signers[0].address)).to.equal(balanceAfter);
 
@@ -425,7 +414,7 @@ describe("UnboundToken", function() {
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
 
-            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, "1"))
                 .to.emit(und, "Transfer")
                 .withArgs(zeroAddress, signers[0].address, "56568542494923801952");
         })
@@ -443,7 +432,7 @@ describe("UnboundToken", function() {
 
             let lockAmount = ethers.utils.parseEther("1").toString();
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
 
             await vaultFactory.disableVault(ethDaiVault.address);
             await ethers.provider.send("evm_increaseTime", [604801])   // increase evm time by 7 days
@@ -457,7 +446,7 @@ describe("UnboundToken", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
             let balanceBefore = (await und.balanceOf(signers[0].address)).toString();
 
             let expectedMintAMount = "56568542494923801952";
@@ -473,7 +462,7 @@ describe("UnboundToken", function() {
             let lockAmount = ethers.utils.parseEther("1").toString();
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-            await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+            await ethDaiVault.lock(lockAmount, signers[0].address, "1")
 
             let expectedMintAMount = "56568542494923801952";
 
@@ -500,7 +489,7 @@ describe("UnboundToken", function() {
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
 
-            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, "1"))
                 .to.be.revertedWith("Pausable: paused");
         });
         // it("should revert if unlock LPT when contract is paused", async function() { 
@@ -508,7 +497,7 @@ describe("UnboundToken", function() {
         //     let lockAmount = ethers.utils.parseEther("1").toString();
 
         //     await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-        //     await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        //     await ethDaiVault.lock(lockAmount, signers[0].address, "1")
             
         //     await und.setPause();            
 
@@ -536,12 +525,12 @@ describe("UnboundToken", function() {
 
             await ethDaiPair.approve(ethDaiVault.address, lockAmount);
 
-            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, "1"))
                 .to.be.revertedWith("Pausable: paused");
 
             await und.setUnpause();         
             
-            await expect(ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1"))
+            await expect(ethDaiVault.lock(lockAmount, signers[0].address, "1"))
                 .to.emit(und, "Transfer")
 
         });
@@ -550,7 +539,7 @@ describe("UnboundToken", function() {
         //     let lockAmount = ethers.utils.parseEther("1").toString();
 
         //     await ethDaiPair.approve(ethDaiVault.address, lockAmount);
-        //     await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, "1")
+        //     await ethDaiVault.lock(lockAmount, signers[0].address, "1")
             
         //     await und.setPause();            
 
