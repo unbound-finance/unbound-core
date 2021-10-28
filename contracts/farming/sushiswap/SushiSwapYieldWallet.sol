@@ -94,8 +94,9 @@ contract SushiSwapYieldWallet {
      * @param _to User address where token will be sent
      */
     function claim(address _token, address _to) external onlyOwner {
-        IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
-        emit Claim(_token, _to, IERC20(_token).balanceOf(address(this)));
+        uint256 transferAmount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).transfer(_to, transferAmount);
+        emit Claim(_token, _to, transferAmount);
     }
 
     /**

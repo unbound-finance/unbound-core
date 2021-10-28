@@ -145,10 +145,13 @@ describe('SushiSwapYieldWalletFactory', function () {
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
 
-    await vaultFactory.enableVault(ethDaiVault.address)
+    await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
+    await vaultFactory.enableVault(ethDaiVault.address);
+
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+    await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
     
     await und.addMinter(vaultFactory.address)
@@ -192,7 +195,7 @@ describe('SushiSwapYieldWalletFactory', function () {
       )
     })
 
-    it('should create new yield wallet for first time user locking LPT', async function () {
+    it('should create new yield wallet for first time user staking LPT', async function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -204,9 +207,10 @@ describe('SushiSwapYieldWalletFactory', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
       )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.not.equal(
         zeroAddress
@@ -221,13 +225,14 @@ describe('SushiSwapYieldWalletFactory', function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
-      await expect(ethDaiVault.lock(
+      await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        yieldWalletFactory.address,
         0
-      )).to.emit(yieldWalletFactory, "YeildWalletFactory")
+      )
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true))
+        .to.emit(yieldWalletFactory, "YeildWalletFactory")
       
     })
   })
@@ -258,6 +263,15 @@ describe('SushiSwapYieldWalletFactory', function () {
       await yieldWalletFactory.setPids([ethDaiPair.address], [1]);
 
       expect(await yieldWalletFactory.pids(ethDaiPair.address)).to.eq("1");
+
+    })
+
+    it('should emit set pids event', async function () {
+
+      await expect(yieldWalletFactory.setPids([ethDaiPair.address], [1]))
+        .to.emit(yieldWalletFactory, "SetPids")
+        .withArgs([ethDaiPair.address], [1]);
+
 
     })
   

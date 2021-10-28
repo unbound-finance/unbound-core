@@ -132,10 +132,13 @@ describe('UniswapV2Vault', function () {
     await ethDaiVault.changeCR(CR)
     await ethDaiVault.changeFee(PROTOCOL_FEE)
     await ethDaiVault.changeStakeFee(stakeFee)
-    await ethDaiVault.enableYieldWalletFactory(zeroAddress)
+    
+    await ethDaiVault.enableYieldWalletFactory(zeroAddress);
+    await vaultFactory.enableVault(ethDaiVault.address);
 
-    await vaultFactory.enableVault(ethDaiVault.address)
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+
+    await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
 
     await und.addMinter(vaultFactory.address)
@@ -275,7 +278,25 @@ describe('UniswapV2Vault', function () {
             undDaiPair
           )
         ).to.be.reverted;
-      })
+    })
+    it('should revert if LP token decimals is not 18', async function () {
+
+      let pairToken = await ethers.getContractFactory('TestToken')
+      pairToken = await pairToken.deploy("Uniswap LP", "LP", 9, signers[0].address)
+
+      await expect(
+        vaultFactory.createVault(
+          und.address,
+          signers[0].address,
+          pairToken.address,
+          tDai.address,
+          [feedEthUsd.address, feedEthUsd.address],
+          '900000000000000000', // 10%
+          5000,
+          undDaiPair
+        )
+      ).to.be.revertedWith('ID')
+    })
   })
 
   describe('#lockWithPermit', async () => {
@@ -303,7 +324,6 @@ describe('UniswapV2Vault', function () {
           .lockWithPermit(
             permitAmount,
             signers[0].address,
-            zeroAddress,
             '100',
             expiration,
             v,
@@ -338,7 +358,6 @@ describe('UniswapV2Vault', function () {
           .lockWithPermit(
             dummyPermitAmount,
             signers[0].address,
-            zeroAddress,
             '100',
             expiration,
             v,
@@ -376,7 +395,6 @@ describe('UniswapV2Vault', function () {
           .lockWithPermit(
             permitAmount,
             signers[0].address,
-            zeroAddress,
             '1',
             expiration,
             v,
@@ -409,7 +427,6 @@ describe('UniswapV2Vault', function () {
           .connect(signers[0])
           .lockWithPermit(
             permitAmount,
-            zeroAddress,
             zeroAddress,
             '1',
             expiration,
@@ -448,7 +465,6 @@ describe('UniswapV2Vault', function () {
           .lockWithPermit(
             permitAmount,
             signers[0].address,
-            zeroAddress,
             '1',
             expiration,
             v,
@@ -456,42 +472,6 @@ describe('UniswapV2Vault', function () {
             s
           )
       ).to.be.revertedWith('NA')
-    })
-
-    it('should revert farming address is not valid', async function () {
-      await ethDaiVault.disableYieldWalletFactory(zeroAddress)
-
-      const { chainId } = await ethers.provider.getNetwork()
-
-      const expiration = MAX_UINT_AMOUNT
-      const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
-      const permitAmount = ethers.utils.parseEther('1').toString()
-
-      const msgParams = buildPermitParams(
-        chainId,
-        ethDaiPair.address,
-        signers[0].address,
-        ethDaiVault.address,
-        nonce,
-        permitAmount,
-        expiration.toString()
-      )
-      const { v, r, s } = getSignatureFromTypedData(accountsPkey[0], msgParams)
-
-      await expect(
-        ethDaiVault
-          .connect(signers[0])
-          .lockWithPermit(
-            permitAmount,
-            signers[0].address,
-            zeroAddress,
-            '1',
-            expiration,
-            v,
-            r,
-            s
-          )
-      ).to.be.revertedWith('IN')
     })
 
     it('should revert if LTV is 0', async function () { 
@@ -521,7 +501,6 @@ describe('UniswapV2Vault', function () {
             .lockWithPermit(
               permitAmount,
               signers[0].address,
-              zeroAddress,
               '1',
               expiration,
               v,
@@ -576,7 +555,6 @@ describe('UniswapV2Vault', function () {
           .lockWithPermit(
             permitAmount,
             signers[0].address,
-            zeroAddress,
             minUTokenAmount,
             expiration,
             v,
@@ -640,7 +618,6 @@ describe('UniswapV2Vault', function () {
       let lock = await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v,
@@ -733,7 +710,6 @@ describe('UniswapV2Vault', function () {
         ethDaiVault.lockWithPermit(
           permitAmount,
           signers[0].address,
-          zeroAddress,
           finalMintAmount,
           expiration,
           v,
@@ -813,7 +789,6 @@ describe('UniswapV2Vault', function () {
       let lock = await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v,
@@ -894,7 +869,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v,
@@ -962,7 +936,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v,
@@ -998,7 +971,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v2,
@@ -1071,7 +1043,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lockWithPermit(
         permitAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount,
         expiration,
         v,
@@ -1130,7 +1101,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lockWithPermit(
         permitAmount2,
         signers[0].address,
-        zeroAddress,
         finalMintAmount2,
         expiration,
         v2,
@@ -1159,7 +1129,7 @@ describe('UniswapV2Vault', function () {
       let lockAmount = new BigNumber(ownerLPTBalance).plus('1').toFixed()
 
       await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+        ethDaiVault.lock(lockAmount, signers[0].address, '1')
       ).to.be.reverted
     })
 
@@ -1169,7 +1139,7 @@ describe('UniswapV2Vault', function () {
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, zeroAddress, zeroAddress, '1')
+        ethDaiVault.lock(lockAmount, zeroAddress, '1')
       ).to.be.revertedWith('NO')
     })
 
@@ -1183,20 +1153,8 @@ describe('UniswapV2Vault', function () {
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
 
       await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+        ethDaiVault.lock(lockAmount, signers[0].address, '1')
       ).to.be.revertedWith('NA')
-    })
-
-    it('should revert if farming wallet is not valid', async function () {
-      await ethDaiVault.disableYieldWalletFactory(zeroAddress)
-
-      let lockAmount = ethers.utils.parseEther('1').toString()
-
-      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
-      await expect(
-        ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
-      ).to.be.revertedWith('IN')
     })
 
     it('should revert if LTV is zero', async function () {
@@ -1207,7 +1165,7 @@ describe('UniswapV2Vault', function () {
         await ethDaiPair.approve(ethDaiVault.address, lockAmount)
   
         await expect(
-          ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+          ethDaiVault.lock(lockAmount, signers[0].address, '1')
         ).to.be.revertedWith('NI')
     })
 
@@ -1234,7 +1192,7 @@ describe('UniswapV2Vault', function () {
       await expect(
         ethDaiVault
           .connect(signers[0])
-          .lock(lockAmount, signers[0].address, zeroAddress, minUTokenAmount)
+          .lock(lockAmount, signers[0].address, minUTokenAmount)
       ).to.be.revertedWith('MIN')
     })
 
@@ -1273,7 +1231,6 @@ describe('UniswapV2Vault', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1335,7 +1292,6 @@ describe('UniswapV2Vault', function () {
       let lock = await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1397,7 +1353,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1442,7 +1397,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1458,7 +1412,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1506,7 +1459,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
-        zeroAddress,
         finalMintAmount
       )
 
@@ -1546,7 +1498,6 @@ describe('UniswapV2Vault', function () {
       await ethDaiVault.lock(
         lockAmount2,
         signers[0].address,
-        zeroAddress,
         finalMintAmount2
       )
 
@@ -1566,7 +1517,7 @@ describe('UniswapV2Vault', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -1575,7 +1526,7 @@ describe('UniswapV2Vault', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
@@ -2694,7 +2645,7 @@ describe('UniswapV2Vault', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -2703,7 +2654,7 @@ describe('UniswapV2Vault', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
@@ -3243,7 +3194,7 @@ describe('UniswapV2Vault', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
 
       // Transfer some extra und to user 0 to repay all debts
       await ethDaiPair.transfer(signers[1].address, lockAmount)
@@ -3252,7 +3203,7 @@ describe('UniswapV2Vault', function () {
         .approve(ethDaiVault.address, lockAmount)
       await ethDaiVault
         .connect(signers[1])
-        .lock(lockAmount, signers[1].address, zeroAddress, '1')
+        .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
     })
 
@@ -3336,7 +3287,7 @@ describe('UniswapV2Vault', function () {
     beforeEach(async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-      await ethDaiVault.lock(lockAmount, signers[0].address, zeroAddress, '1')
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
     })
 
     it('should revert if safu address is not initialized', async () => {
