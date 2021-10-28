@@ -364,12 +364,7 @@ contract UniswapV2Vault is UnboundVaultBase {
     function migrate(address _farming) public {
         require(address(migrator) != address(0), 'migrate: no migrator');
 
-        if (
-            pair.allowance(address(this), address(migrator)) !=
-            type(uint256).max
-        ) {
-            pair.approve(address(migrator), type(uint256).max);
-        }
+        pair.approve(address(migrator), collateral[msg.sender]);
 
         if (yieldWalletDeposit[msg.sender] > 0) {
             _unstakeLP(msg.sender, yieldWalletDeposit[msg.sender]);
