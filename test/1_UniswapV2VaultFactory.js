@@ -498,73 +498,73 @@ describe("UniswapV2VaultFactory", function() {
     })
   })
 
-  describe("#setPause", async () => {
-    it("should revert is caller is not owner", async function() { 
-        await expect(vaultFactory.connect(signers[1]).setPause()).to.be.revertedWith("NA");            
-    });
-    it("should pause contract", async function() { 
-        await vaultFactory.setPause();            
-        expect(await vaultFactory.paused()).to.equal(true);
-    });
-    it("should revert if craeteVault when contract is paused", async function() { 
-        await vaultFactory.setPause();  
+//   describe("#setPause", async () => {
+//     it("should revert is caller is not owner", async function() { 
+//         await expect(vaultFactory.connect(signers[1]).setPause()).to.be.revertedWith("NA");            
+//     });
+//     it("should pause contract", async function() { 
+//         await vaultFactory.setPause();            
+//         expect(await vaultFactory.paused()).to.equal(true);
+//     });
+//     it("should revert if craeteVault when contract is paused", async function() { 
+//         await vaultFactory.setPause();  
 
-        await expect(
-            vaultFactory.createVault(
-                und.address,
-                signers[0].address,
-                ethDaiPair,
-                tDai.address,
-                [feedEthUsd.address],
-                "900000000000000000",
-                5000,
-                undDaiPair
-            )
-        ).to.be.revertedWith("Pausable: paused");
-    });
-  })
+//         await expect(
+//             vaultFactory.createVault(
+//                 und.address,
+//                 signers[0].address,
+//                 ethDaiPair,
+//                 tDai.address,
+//                 [feedEthUsd.address],
+//                 "900000000000000000",
+//                 5000,
+//                 undDaiPair
+//             )
+//         ).to.be.revertedWith("Pausable: paused");
+//     });
+//   })
 
-  describe("#setUnpause", async () => {
-    it("should revert is caller is not owner", async function() { 
-        await expect(vaultFactory.connect(signers[1]).setUnpause()).to.be.revertedWith("NA");            
-    });
-    it("should unpause contract", async function() { 
-        await vaultFactory.setPause();            
-        expect(await vaultFactory.paused()).to.equal(true);
+//   describe("#setUnpause", async () => {
+//     it("should revert is caller is not owner", async function() { 
+//         await expect(vaultFactory.connect(signers[1]).setUnpause()).to.be.revertedWith("NA");            
+//     });
+//     it("should unpause contract", async function() { 
+//         await vaultFactory.setPause();            
+//         expect(await vaultFactory.paused()).to.equal(true);
 
-        await vaultFactory.setUnpause();            
-        expect(await vaultFactory.paused()).to.equal(false);
-    });
-    it("should revert if craeteVault when contract is paused and can create once contract is unpaused", async function() { 
-        await vaultFactory.setPause();  
+//         await vaultFactory.setUnpause();            
+//         expect(await vaultFactory.paused()).to.equal(false);
+//     });
+//     it("should revert if craeteVault when contract is paused and can create once contract is unpaused", async function() { 
+//         await vaultFactory.setPause();  
                   
-        await expect(
-            vaultFactory.createVault(
-                und.address,
-                signers[0].address,
-                ethDaiPair,
-                tDai.address,
-                [feedEthUsd.address],
-                "900000000000000000",
-                5000,
-                undDaiPair
-            )
-        ).to.be.revertedWith("Pausable: paused");
+//         await expect(
+//             vaultFactory.createVault(
+//                 und.address,
+//                 signers[0].address,
+//                 ethDaiPair,
+//                 tDai.address,
+//                 [feedEthUsd.address],
+//                 "900000000000000000",
+//                 5000,
+//                 undDaiPair
+//             )
+//         ).to.be.revertedWith("Pausable: paused");
 
-        await vaultFactory.setUnpause();  
+//         await vaultFactory.setUnpause();  
 
-        await expect(vaultFactory.createVault(
-            und.address,
-            signers[0].address,
-            ethDaiPair,
-            tDai.address,
-            [feedEthUsd.address],
-            "900000000000000000",
-            5000,
-            undDaiPair
-        )).to.emit(vaultFactory, "NewVault");
+//         await expect(vaultFactory.createVault(
+//             und.address,
+//             signers[0].address,
+//             ethDaiPair,
+//             tDai.address,
+//             [feedEthUsd.address],
+//             "900000000000000000",
+//             5000,
+//             undDaiPair
+//         )).to.emit(vaultFactory, "NewVault");
 
-    });
-  })
+//     });
+//   })
     
 });

@@ -126,14 +126,12 @@ describe('UnboundVaultBase', function () {
 
     await ethDaiVault.enableYieldWalletFactory(zeroAddress);
     await vaultFactory.enableVault(ethDaiVault.address);
+    await und.addMinter(vaultFactory.address)
 
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
 
     await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
-
-    await und.addMinter(vaultFactory.address)
-    await ethers.provider.send('evm_increaseTime', [604800]) // increase evm time by 7 days
     await und.enableMinter(vaultFactory.address)
   })
 

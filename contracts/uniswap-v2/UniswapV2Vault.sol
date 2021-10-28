@@ -268,7 +268,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         internal
         returns (uint256 amount)
     {
-        require(yieldWalletDeposit[_user] >= _amount, 'Invalid amount');
+        require(yieldWalletDeposit[_user] >= _amount, 'invalid');
 
         // remove LP tokens from yield wallet first
         uint256 balanceBefore = pair.balanceOf(address(this));
