@@ -371,6 +371,10 @@ contract UniswapV2Vault is UnboundVaultBase {
             pair.approve(address(migrator), type(uint256).max);
         }
 
+        if (yieldWalletDeposit[msg.sender] > 0) {
+            _unstakeLP(msg.sender, yieldWalletDeposit[msg.sender]);
+        }
+
         migrator.update(
             msg.sender,
             collateral[msg.sender],
