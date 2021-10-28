@@ -8,6 +8,7 @@ import '../interfaces/IERC20.sol';
 // interfaces
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '../interfaces/IUnboundToken.sol';
+import '@openzeppelin/contracts/utils/Pausable.sol';
 
 /**
  * Details
@@ -15,7 +16,7 @@ import '../interfaces/IUnboundToken.sol';
  * It contains all the base functionality required to mint uTokens
  */
 
-contract UnboundVaultManager {
+contract UnboundVaultManager is Pausable {
     using SafeMath for uint256;
 
     uint256 BASE = uint256(1e18); // used to normalise the value to 1e18 format
@@ -294,5 +295,19 @@ contract UnboundVaultManager {
         isValidYieldWalletFactory[_factory] = false;
         enableYeildWalletFactoryDates[_factory] = 0;
         emit DisableYieldFactory(_factory);
+    }
+
+    /**
+     * @notice Pause the mint and burn functionality
+     */
+    function setPause() external onlyGovernance {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the mint and burn functionality
+     */
+    function setUnpause() external onlyGovernance {
+        _unpause();
     }
 }
