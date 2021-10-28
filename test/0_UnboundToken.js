@@ -114,11 +114,11 @@ describe("UnboundToken", function() {
         await ethDaiVault.enableYieldWalletFactory(zeroAddress);
 
         await vaultFactory.enableVault(ethDaiVault.address);
-        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
-        await vaultFactory.executeEnableVault(ethDaiVault.address);
-
         await und.addMinter(vaultFactory.address);
-        await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
+        
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        
+        await vaultFactory.executeEnableVault(ethDaiVault.address);
         await und.enableMinter(vaultFactory.address);
 
     });
@@ -210,13 +210,13 @@ describe("UnboundToken", function() {
                 .to.be.revertedWith("NA");
         });
 
-        it("should revert if enable before 7 days", async () => {
+        it("should revert if enable before 3 days", async () => {
             await expect(und.enableMinter(zeroAddress)).to.be.reverted;
         });
         
-        it("should enable minter 7 days", async () => {
+        it("should enable minter 3 zdays", async () => {
 
-            await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
+            await ethers.provider.send("evm_increaseTime", [259200])   // increase evm time by 3 days
             await und.enableMinter(zeroAddress);
 
             expect(await und.minters(zeroAddress)).to.equal(true);
@@ -224,7 +224,7 @@ describe("UnboundToken", function() {
         });
 
         it("should emit enable minter event", async () => {
-            await ethers.provider.send("evm_increaseTime", [604800])   // increase evm time by 7 days
+            await ethers.provider.send("evm_increaseTime", [259200])   // increase evm time by 3 days
 
             await expect(
                 und.enableMinter(zeroAddress))

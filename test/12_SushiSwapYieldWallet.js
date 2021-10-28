@@ -155,14 +155,12 @@ describe('SushiSwapYieldWallet', function () {
     await ethDaiVault.changeStakeFee(stakeFee)
     await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
     await vaultFactory.enableVault(ethDaiVault.address);
+    await und.addMinter(vaultFactory.address)
 
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
 
     await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
-    await vaultFactory.executeEnableVault(ethDaiVault.address);
-    
-    await und.addMinter(vaultFactory.address)
-    await ethers.provider.send('evm_increaseTime', [604800]) // increase evm time by 7 days
+    await vaultFactory.executeEnableVault(ethDaiVault.address);    
     await und.enableMinter(vaultFactory.address);
 
   })

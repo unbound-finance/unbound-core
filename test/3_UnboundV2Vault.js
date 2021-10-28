@@ -135,14 +135,12 @@ describe('UniswapV2Vault', function () {
     
     await ethDaiVault.enableYieldWalletFactory(zeroAddress);
     await vaultFactory.enableVault(ethDaiVault.address);
+    await und.addMinter(vaultFactory.address)
 
     await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
 
     await ethDaiVault.executeEnableYeildWalletFactory(zeroAddress);
     await vaultFactory.executeEnableVault(ethDaiVault.address);
-
-    await und.addMinter(vaultFactory.address)
-    await ethers.provider.send('evm_increaseTime', [604800]) // increase evm time by 7 days
     await und.enableMinter(vaultFactory.address)
   })
 
@@ -3189,6 +3187,372 @@ describe('UniswapV2Vault', function () {
 
   })
 
+  describe('#stakeLP', async () => {
+
+    let yieldWalletFactory, sushiToken, masterchef;
+
+    beforeEach(async function () {
+
+      let TestToken = await ethers.getContractFactory('TestToken')
+      sushiToken = await TestToken.deploy("Sushi Token", "SUSHI", 18, signers[0].address)
+  
+      let MasterChef = await ethers.getContractFactory('MasterChef')
+      masterchef = await MasterChef.deploy(sushiToken.address, signers[0].address, "100000000000000000000")
+  
+      await masterchef.add("4000", ethDaiPair.address, false);
+  
+      let SushiSwapYieldWalletFactory = await ethers.getContractFactory(
+        'SushiSwapYieldWalletFactory'
+      )
+      yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
+  
+      await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
+      await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+      await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+    })
+
+    it('should revert if contract is paused', async () => {
+
+      await ethDaiVault.setPause();
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true))
+        .to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert if farming address is zeroaddress', async () => {
+
+      await expect(ethDaiVault.stakeLP(zeroAddress, "1", true))
+        .to.be.revertedWith('IA');
+
+    })
+
+    it('should revert if farming address is not enabled', async () => {
+
+      await expect(ethDaiVault.stakeLP(signers[1].address, "1", true))
+        .to.be.revertedWith('IN');
+        
+    })
+
+    it('should revert if stake amount is greater then collateral minus staked amount', async () => {
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+      let staked = (await ethDaiVault.yieldWalletDeposit(signers[0].address)).toString()
+      let stakeAmt = (new BigNumber(collateral).minus(staked).plus(1)).toFixed()
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, stakeAmt, true))
+        .to.be.revertedWith('invalid');
+        
+    })
+
+    it('should revert if createNewVault and already staked LP', async function () {
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true);
+
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true))
+      .to.be.revertedWith('unstake');
+
+    })
+
+
+    it('should create new yield wallet for user if staking lp for first time', async function () {
+
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.eq(zeroAddress)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.eq(wallet)
+
+    })
+
+    it('should create new yield wallet for user if opted for createNewWallet', async function () {
+
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.eq(zeroAddress)
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(await ethDaiVault.yieldWallet(signers[0].address)).to.eq(wallet)
+
+      await ethDaiVault.unstakeLP("1");
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, "1", true);
+
+      let wallet2 = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(wallet).to.not.equal(wallet2)
+
+    })
+
+    it('should increase yieldWalletDeposit amount on stake LPT', async function () {
+
+      expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal('0')
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+      expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
+
+    })
+
+    it('should transfer LPT to farming contract on stake LPT', async function () {
+
+      let lockAmount1 = ethers.utils.parseEther('0.1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount1)
+
+      await ethDaiVault.lock(
+        lockAmount1,
+        signers[0].address,
+        0
+      ) // to create yield wallet for user
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount1, true);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let balanceBefore = (await ethDaiPair.balanceOf(masterchef.address)).toString()
+      let walletBalanceBefore = (await ethDaiPair.balanceOf(wallet)).toString()
+
+      expect(walletBalanceBefore).to.be.equal("0")
+
+      let lockAmount2 = ethers.utils.parseEther('0.2').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount2)
+
+      await ethDaiVault.lock(
+        lockAmount2,
+        signers[0].address,
+        0
+      )
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount2, false);
+      
+      let balanceAfter = new BigNumber(balanceBefore)
+        .plus(lockAmount2)
+        .toString()
+
+      expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfter)
+      expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(walletBalanceBefore)
+    })
+
+    it('should update correct info for user and pool in farming contract', async function () {
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let info = await yieldwallet.getWalletInfo();
+
+      expect(info.amount.toString()).to.be.equal(lockAmount)
+
+    })
+
+    it('should deposit event on stake LPT', async function () {
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
+
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      expect(stake).to.emit(yieldwallet, "Deposit").withArgs(pid, lockAmount)
+
+    })
+
+    it('should emit proper transfer event while staking LPTs', async function () {
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, masterchef.address, lockAmount)
+
+    })
+
+  })
+
+  describe('#unstakeLP', async () => {
+
+    let yieldWalletFactory, sushiToken, masterchef;
+
+    beforeEach(async function () {
+
+      let TestToken = await ethers.getContractFactory('TestToken')
+      sushiToken = await TestToken.deploy("Sushi Token", "SUSHI", 18, signers[0].address)
+  
+      let MasterChef = await ethers.getContractFactory('MasterChef')
+      masterchef = await MasterChef.deploy(sushiToken.address, signers[0].address, "100000000000000000000")
+  
+      await masterchef.add("4000", ethDaiPair.address, false);
+  
+      let SushiSwapYieldWalletFactory = await ethers.getContractFactory(
+        'SushiSwapYieldWalletFactory'
+      )
+      yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
+  
+      await ethDaiVault.enableYieldWalletFactory(yieldWalletFactory.address)
+      await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+      await ethDaiVault.executeEnableYeildWalletFactory(yieldWalletFactory.address);
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+      // Transfer some extra und to user 0 to repay all debts
+      await ethDaiPair.transfer(signers[1].address, lockAmount)
+      await ethDaiPair
+        .connect(signers[1])
+        .approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault
+        .connect(signers[1])
+        .lock(lockAmount, signers[1].address, '1')
+      await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
+
+    })
+
+    it('should revert if contract is paused', async () => {
+
+      await ethDaiVault.setPause();
+
+      await expect(ethDaiVault.unstakeLP("1"))
+        .to.be.revertedWith('Pausable: paused')
+    })
+
+    it('should revert if unstake amount is greater then stake amount', async () => {
+
+      let unstakeAmt = ethers.utils.parseEther('2').toString()
+
+      await expect(ethDaiVault.unstakeLP(unstakeAmt))
+        .to.be.revertedWith('invalid');
+
+    })
+
+    it('should decrese yieldWalletDeposit amount on unstake LPT', async function () {
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      expect(
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
+      ).to.be.equal(lockAmount)
+
+      await ethDaiVault.unstakeLP(lockAmount);
+
+      expect(
+        await ethDaiVault.yieldWalletDeposit(signers[0].address)
+      ).to.be.equal("0")    
+    })
+
+    it("should transfer LPT back to vault from farming wallet on unstake LPT", async function() {
+      
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
+
+      let balanceBeforeVault = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
+      let balanceBeforeFarming = (await ethDaiPair.balanceOf(masterchef.address)).toString()
+      let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
+
+      expect(balanceBeforeWallet).to.be.equal("0")
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      await ethDaiVault.unstakeLP(collateral);
+
+      let balanceAfterVault = (new BigNumber(balanceBeforeVault).plus(collateral)).toFixed()
+      let balanceAfterFarming = (new BigNumber(balanceBeforeFarming).minus(collateral)).toFixed()
+
+      expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.be.equal(balanceAfterVault)
+      expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfterFarming)
+      expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceBeforeWallet)
+
+    });
+
+    it('should update correct info for user and pool in farming contract', async function () {
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      
+      let infoBefore = await yieldwallet.getWalletInfo();
+      
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+      
+      await ethDaiVault.unstakeLP(collateral);
+      
+      let infoAfter = await yieldwallet.getWalletInfo();
+      let infoAfterExpected = new BigNumber(infoBefore.amount.toString()).minus(collateral).toFixed();
+
+      expect(infoAfter.amount.toString()).to.be.equal(infoAfterExpected)
+
+    })
+
+    it('should emit withdraw event while unstaking LPTs', async function () {
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+      
+      let unstake = await ethDaiVault.unstakeLP(collateral);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
+
+
+      expect(unstake).to.emit(masterchef, "Withdraw").withArgs(wallet, pid, collateral)
+
+    })
+
+    it('should emit proper transfer event while unlock LPTs', async function () {
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+      
+      let unstake = await ethDaiVault.unstakeLP(collateral);
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(masterchef.address, wallet, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
+
+    })
+
+  })
+
 
   describe('#emergencyUnlock', async () => {
     beforeEach(async function () {
@@ -3205,6 +3569,19 @@ describe('UniswapV2Vault', function () {
         .connect(signers[1])
         .lock(lockAmount, signers[1].address, '1')
       await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
+
+      await ethDaiVault.setPause();
+    })
+
+    it('should revert if contract is not paused', async () => {
+
+      await ethDaiVault.setUnpause();
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+
+      await und.transfer(signers[1].address, lockAmount)
+
+      await expect(ethDaiVault.emergencyUnlock()).to.be.revertedWith('Pausable: not paused')
     })
 
     it('should revert if user balance if less then debt', async () => {
