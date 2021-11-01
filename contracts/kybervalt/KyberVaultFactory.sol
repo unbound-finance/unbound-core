@@ -1,14 +1,14 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.7.6;
 
-import './UniswapV2Vault.sol';
+import './KyberVault.sol';
 // libraries
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
 // interfaces
 import '../interfaces/IERC20.sol';
 
-contract UniswapV2VaultFactory {
+contract KyberVaultFactory {
     mapping(address => bool) public allowed;
     mapping(address => bool) public vaults;
 
@@ -17,7 +17,7 @@ contract UniswapV2VaultFactory {
 
     uint256 public index;
 
-    address public uniswapFactory;
+    address public kyberDMMFactory;
 
     mapping(uint256 => address) public vaultByIndex;
 
@@ -47,7 +47,7 @@ contract UniswapV2VaultFactory {
      */
     constructor(address _governance, address _factory) {
         governance = _governance;
-        uniswapFactory = _factory;
+        kyberDMMFactory = _factory;
     }
 
     /**
@@ -72,7 +72,7 @@ contract UniswapV2VaultFactory {
         address _staking
     ) external onlyGovernance returns (address vault) {
         vault = address(
-            new UniswapV2Vault(
+            new KyberVault(
                 _uToken,
                 _governance,
                 _pair,
@@ -81,7 +81,7 @@ contract UniswapV2VaultFactory {
                 _maxPercentDiff,
                 _allowedDelay,
                 _staking,
-                uniswapFactory
+                kyberDMMFactory
             )
         );
         index = index + 1;

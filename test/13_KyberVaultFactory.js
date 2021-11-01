@@ -11,8 +11,8 @@ let und;
 let tEth;
 let tDai;
 let weth;
-let uniswapFactory;
-let uniswapRouter;
+let kyberDmmFactory;
+let dmmRoute02;
 let ethDaiPair;
 let undDaiPair;
 let vaultFactory;
@@ -20,35 +20,35 @@ let oracleLibrary;
 
 let feedEthUsd;
 
-describe("UniswapV2VaultFactory", function() {
+describe("KyberVaultFactory", function() {
 
     beforeEach(async function () {
         signers = await ethers.getSigners();
         governance = signers[0].address;
 
-        let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
-        uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
+        let KyberDMMFactory = await ethers.getContractFactory('DMMFactory')
+        kyberDmmFactory = await KyberDMMFactory.deploy(zeroAddress)
     
         let WETH9 = await ethers.getContractFactory('WETH9')
         weth = await WETH9.deploy()
     
-        let UniswapV2Router02 = await ethers.getContractFactory('UniswapV2Router02')
-        uniswapRouter = await UniswapV2Router02.deploy(
-          uniswapFactory.address,
+        let DMMRouter02 = await ethers.getContractFactory('DMMRouter02')
+        dmmRoute02 = await DMMRouter02.deploy(
+          kyberDmmFactory.address,
           weth.address
         )
     
-        let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+        let Oracle = await ethers.getContractFactory('KyberDMMPriceProvider')
         oracleLibrary = await Oracle.deploy()
     
         let VaultFactory = await ethers.getContractFactory(
-          'UniswapV2VaultFactory',
+          'KyberVaultFactory',
           {
-            libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+            libraries: { KyberDMMPriceProvider: oracleLibrary.address },
           }
         )
     
-        vaultFactory = await VaultFactory.deploy(governance, uniswapFactory.address)
+        vaultFactory = await VaultFactory.deploy(governance, kyberDmmFactory.address)
         let UnboundToken = await ethers.getContractFactory("UnboundToken");
         und = await UnboundToken.deploy(signers[0].address);
 
@@ -58,11 +58,14 @@ describe("UniswapV2VaultFactory", function() {
         let TestDai = await ethers.getContractFactory("TestDai");
         tDai = await TestDai.deploy(signers[0].address, "1337");
 
-        await uniswapFactory.createPair(und.address, tDai.address); 
-        await uniswapFactory.createPair(tEth.address, tDai.address);
-
-        undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
-        ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
+        await kyberDmmFactory.createPool(und.address, tDai.address, 20000)
+        await kyberDmmFactory.createPool(tEth.address, tDai.address, 20000)
+    
+        undDaiPair = await kyberDmmFactory.getPools(und.address, tDai.address)
+        ethDaiPair = await kyberDmmFactory.getPools(tEth.address, tDai.address)
+    
+        undDaiPair = undDaiPair[0]
+        ethDaiPair = ethDaiPair[0]
 
         let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
         feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
@@ -383,6 +386,7 @@ describe("UniswapV2VaultFactory", function() {
         expect(await vaultFactory.enableDates(vault)).to.be.equal(0);
         
     })
+
   })
 
   describe("#disableVault", async () => {

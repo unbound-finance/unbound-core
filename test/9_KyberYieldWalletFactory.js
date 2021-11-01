@@ -47,25 +47,25 @@ describe('KyberYieldWalletFactory', function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
 
-    let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
+    let UniswapV2Factory = await ethers.getContractFactory('DMMFactory')
     uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
 
     let WETH9 = await ethers.getContractFactory('WETH9')
     weth = await WETH9.deploy()
 
-    let UniswapV2Router02 = await ethers.getContractFactory('UniswapV2Router02')
+    let UniswapV2Router02 = await ethers.getContractFactory('DMMRouter02')
     uniswapRouter = await UniswapV2Router02.deploy(
       uniswapFactory.address,
       weth.address
     )
 
-    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+    let Oracle = await ethers.getContractFactory('KyberDMMPriceProvider')
     oracleLibrary = await Oracle.deploy()
 
     let VaultFactory = await ethers.getContractFactory(
-      'UniswapV2VaultFactory',
+      'KyberVaultFactory',
       {
-        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+        libraries: { KyberDMMPriceProvider: oracleLibrary.address },
       }
     )
 
@@ -80,13 +80,14 @@ describe('KyberYieldWalletFactory', function () {
     let TestDai = await ethers.getContractFactory('TestDai')
     tDai = await TestDai.deploy(signers[0].address, '1337')
 
-    await uniswapFactory.createPair(und.address, tDai.address)
-    await uniswapFactory.createPair(tEth.address, tDai.address)
+    await uniswapFactory.createPool(und.address, tDai.address, 20000)
+    await uniswapFactory.createPool(tEth.address, tDai.address, 20000)
 
-    undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
-    ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
+    undDaiPair = await uniswapFactory.getPools(und.address, tDai.address)
+    ethDaiPair = await uniswapFactory.getPools(tEth.address, tDai.address)
 
-    ethDaiPair = await ethers.getContractAt('UniswapV2Pair', ethDaiPair)
+    undDaiPair = undDaiPair[0]
+    ethDaiPair = await ethers.getContractAt('DMMPool', ethDaiPair[0])
 
     let daiAmount = ethers.utils
       .parseEther(((Number(ethPrice) / 100000000) * 1).toString())
@@ -99,10 +100,12 @@ describe('KyberYieldWalletFactory', function () {
     await uniswapRouter.addLiquidity(
       tDai.address,
       tEth.address,
+      ethDaiPair.address,
       daiAmount,
       ethAmount,
       daiAmount,
       ethAmount,
+      [0, MAX_UINT_AMOUNT],
       signers[0].address,
       MAX_UINT_AMOUNT
     )
@@ -125,7 +128,7 @@ describe('KyberYieldWalletFactory', function () {
     )
 
     ethDaiVault = await vaultFactory.vaultByIndex(1)
-    ethDaiVault = await ethers.getContractAt('UniswapV2Vault', ethDaiVault)
+    ethDaiVault = await ethers.getContractAt('KyberVault', ethDaiVault)
 
 
     let TestToken = await ethers.getContractFactory('TestToken')
