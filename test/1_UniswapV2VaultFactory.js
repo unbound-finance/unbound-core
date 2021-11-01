@@ -360,6 +360,29 @@ describe("UniswapV2VaultFactory", function() {
         expect(await vaultFactory.allowed(vault)).to.be.equal(true);
         
     })
+
+    it("should set enable date to zero", async function() { 
+
+        await vaultFactory.createVault(
+            und.address,
+            signers[0].address,
+            ethDaiPair,
+            tDai.address,
+            [feedEthUsd.address],
+            "900000000000000000",
+            5000,
+            undDaiPair
+        );
+
+        let vault = await vaultFactory.vaultByIndex(1);
+
+        await vaultFactory.enableVault(vault);
+        await ethers.provider.send("evm_increaseTime", [259201])   // increase evm time by 3 days
+        await vaultFactory.executeEnableVault(vault);
+    
+        expect(await vaultFactory.enableDates(vault)).to.be.equal(0);
+        
+    })
   })
 
   describe("#disableVault", async () => {

@@ -106,6 +106,7 @@ contract UniswapV2VaultFactory {
     function executeEnableVault(address _vault) external {
         require(enableDates[_vault] != 0, 'ID');
         require(enableDates[_vault] + 3 days < block.timestamp, 'WD');
+        enableDates[_vault] = 0;
         allowed[_vault] = true;
     }
 
