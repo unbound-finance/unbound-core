@@ -164,6 +164,7 @@ describe('KyberYieldWallet', function () {
       'KyberYieldWalletFactory'
     )
     yieldWalletFactory = await KyberYieldWalletFactory.deploy(kyberFairlaunch.address)
+    await yieldWalletFactory.changeTeamFeeAddress(signers[3].address);
 
     await kncRewardToken.transfer(kyberFairlaunch.address, "84121400000000000000")
 
@@ -710,7 +711,7 @@ describe('KyberYieldWallet', function () {
       ).to.be.revertedWith('NA')
     })
 
-    it('should transfer token to user account', async function () {
+    it('should transfer token to user account and fees to yield wallet factory', async function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -733,12 +734,14 @@ describe('KyberYieldWallet', function () {
       )
   
       await kncRewardToken.transfer(wallet, "100")
+
+      let claim = await yieldwallet.claim(kncRewardToken.address, signers[0].address)
   
-      await expect(
-        yieldwallet
-          .claim(kncRewardToken.address, signers[0].address)
-      ).to.emit(kncRewardToken, "Transfer")
-      .withArgs(wallet, signers[0].address, "100");
+      expect(claim).to.emit(kncRewardToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(kncRewardToken, "Transfer").withArgs(wallet, signers[0].address, "80");
+
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(kncRewardToken.address, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(kncRewardToken.address, signers[0].address, "80");
     })
   })
 
@@ -1096,7 +1099,7 @@ describe('KyberYieldWallet', function () {
 
       })
 
-      it('should transfer reward to user address', async function () {
+      it('should transfer reward to user address and fees to yield wallet factory', async function () {
 
         // Harvest for 3 time (total 3 indexes) - also mined 3 blocks
         await yieldWallet.harvest()
@@ -1112,8 +1115,11 @@ describe('KyberYieldWallet', function () {
         expect(vest).to.emit(kyberRewardLocker, "Vested").withArgs(kncRewardToken.address, yieldWallet.address, "4206070000000000000", 2)
 
         expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(kyberRewardLocker.address, yieldWallet.address, "12618210000000000000")
-        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "12618210000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, yieldWalletFactory.address, "2523642000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "10094568000000000000")
 
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, yieldWalletFactory.address, "2523642000000000000");
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, signers[0].address, "10094568000000000000");
       })
     })
 
@@ -1140,7 +1146,7 @@ describe('KyberYieldWallet', function () {
 
       })
 
-      it('should transfer vested reward to user account', async function () {
+      it('should transfer vested reward to user account and fees to yield wallet factory', async function () {
 
         // Harvest for 5 time (total 5 indexes) - also mined 5 blocks
         await yieldWallet.harvest()
@@ -1154,8 +1160,12 @@ describe('KyberYieldWallet', function () {
         let vest = await yieldWallet.vestSchedulesInRange(kncRewardToken.address, 0, 4) // vest reward for index 0,1,2,3,4
 
         expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(kyberRewardLocker.address, yieldWallet.address, "21030350000000000000")
-        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "21030350000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, yieldWalletFactory.address, "4206070000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "16824280000000000000")
 
+
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, yieldWalletFactory.address, "4206070000000000000");
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, signers[0].address, "16824280000000000000");
       })
 
     })
@@ -1215,7 +1225,7 @@ describe('KyberYieldWallet', function () {
 
       })
 
-      it('should transfer vested reward to user account', async function () {
+      it('should transfer vested reward to user account and fees to factory contract', async function () {
 
         // Harvest for 5 time (total 5 indexes) - also mined 5 blocks
         await yieldWallet.harvest()
@@ -1229,8 +1239,11 @@ describe('KyberYieldWallet', function () {
         let vest = await yieldWallet.vestCompletedSchedules(kncRewardToken.address)
 
         expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(kyberRewardLocker.address, yieldWallet.address, "21030350000000000000")
-        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "21030350000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, yieldWalletFactory.address, "4206070000000000000")
+        expect(vest).to.emit(kncRewardToken, "Transfer").withArgs(yieldWallet.address, signers[0].address, "16824280000000000000")
 
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, yieldWalletFactory.address, "4206070000000000000");
+        expect(vest).to.emit(yieldWallet, "WithdrawFund").withArgs(kncRewardToken.address, signers[0].address, "16824280000000000000");
       })
 
     })

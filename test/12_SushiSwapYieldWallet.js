@@ -148,6 +148,7 @@ describe('SushiSwapYieldWallet', function () {
       'SushiSwapYieldWalletFactory'
     )
     yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
+    await yieldWalletFactory.changeTeamFeeAddress(signers[3].address);
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
@@ -431,8 +432,20 @@ describe('SushiSwapYieldWallet', function () {
       let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, false);
 
       expect(stake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "300000000000000000000")
-      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "300000000000000000000")
+      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "60000000000000000000")
+      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "240000000000000000000")
 
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      expect(stake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "60000000000000000000");
+      expect(stake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "240000000000000000000");
     })
 
     it('lockWithPermit - should increase yieldWalletDeposit amount on stake LPT', async function () {
@@ -717,8 +730,20 @@ describe('SushiSwapYieldWallet', function () {
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
       expect(unstake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "500000000000000000000")
-      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "500000000000000000000")
+      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "100000000000000000000")
+      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "400000000000000000000")
 
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        SushiSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "100000000000000000000");
+      expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "400000000000000000000");
     })
   })
 
@@ -776,11 +801,13 @@ describe('SushiSwapYieldWallet', function () {
   
       await sushiToken.transfer(wallet, "100")
   
-      await expect(
-        yieldwallet
-          .claim(sushiToken.address, signers[0].address)
-      ).to.emit(sushiToken, "Transfer")
-      .withArgs(wallet, signers[0].address, "100");
+      let claim = await yieldwallet.claim(sushiToken.address, signers[0].address)
+      
+      expect(claim).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "80");
+
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "80");
     })
 
     it('should emit claim token event', async function () {
@@ -811,7 +838,7 @@ describe('SushiSwapYieldWallet', function () {
         yieldwallet
           .claim(sushiToken.address, signers[0].address)
       ).to.emit(yieldwallet, "Claim")
-      .withArgs(sushiToken.address, signers[0].address, "100");
+      .withArgs(sushiToken.address, signers[0].address, "80");
     })
   })
 
