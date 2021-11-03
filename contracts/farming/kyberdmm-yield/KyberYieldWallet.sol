@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 //interface
 import "../../interfaces/IKyberRewardLocker.sol";
 import "../../interfaces/IKyberFairLaunch.sol";
-
+import "./interfaces/IKyberYieldWalletFactory.sol";
 
 contract KyberYieldWallet{
 
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     address public pair;
@@ -19,6 +20,8 @@ contract KyberYieldWallet{
 
     address public farming; // Address where LPTs will be staked
     uint256 public pid; // pid of the pool for pair
+
+    address public factory; // Address of the yieldwallet factory
 
     address public rewardLocker; // Contract address where rewards will be vested;
 
@@ -33,6 +36,8 @@ contract KyberYieldWallet{
         require(msg.sender == user, 'NA');
         _;
     }
+
+    event WithdrawFund(address indexed token, address to, uint256 amount);
 
     constructor(
         address _pair,
@@ -51,6 +56,7 @@ contract KyberYieldWallet{
         vault = _vault;
         farming = _farming;
         pid = _pid;
+        factory = msg.sender;
 
         // approve allowance to farming contract
         IERC20(_pair).approve(_farming, type(uint256).max);
@@ -83,7 +89,7 @@ contract KyberYieldWallet{
      * @param _to User address where token will be sent
      */
     function claim(address _token, address _to) external onlyOwner {
-        IERC20(_token).transfer(_to, IERC20(_token).balanceOf(address(this)));
+        _withdrawFunds(IERC20(_token), _to, IERC20(_token).balanceOf(address(this)));
     }
 
     /**
@@ -217,8 +223,28 @@ contract KyberYieldWallet{
 
     /* ========== INTERNAL FUNCTIONS ========== */
 
-    function _withdrawFunds(IERC20 _token, address _to, uint256 _amount) internal {
-        _token.safeTransfer(_to, _amount);
+    function _withdrawFunds(IERC20 _token, address _to, uint256 _amount) internal{
+
+        if(address(_token) == pair){
+
+            _token.safeTransfer(_to, _amount);
+
+            emit WithdrawFund(address(_token), _to, _amount);
+            
+        } else {
+
+            uint256 teamSharePercentage = IKyberYieldWalletFactory(factory).teamShare();
+
+            uint256 teamShare = _amount.mul(teamSharePercentage).div(1e18);
+            uint256 userShare = _amount.sub(teamShare);
+
+            _token.safeTransfer(factory, teamShare);
+            _token.safeTransfer(_to, userShare);
+            
+            emit WithdrawFund(address(_token), factory, teamShare);
+            emit WithdrawFund(address(_token), _to, userShare);
+
+        }
     }
 
 }
