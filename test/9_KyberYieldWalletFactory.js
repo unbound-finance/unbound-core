@@ -281,4 +281,47 @@ describe('KyberYieldWalletFactory', function () {
     })
   
   })
+
+  describe("#changeTeamFeeAddress", function() {
+    it("should revert if not called by owner", async function() { 
+        await expect(ethDaiVault.connect(signers[1]).changeTeamFeeAddress(signers[1].address))
+            .to.be.revertedWith("NA");
+    });
+    it("should revert if input address is zero address", async function() { 
+        await expect(ethDaiVault.changeTeamFeeAddress(zeroAddress))
+            .to.be.revertedWith("IA");
+    });
+    it("should set new team address", async () => {
+        await ethDaiVault.changeTeamFeeAddress(signers[1].address);
+        expect(await ethDaiVault.team()).to.equal(signers[1].address);
+    });
+  })
+
+  describe("#distributeFee", function() {
+
+    it("should revert if team address is not initialized", async () => {
+        await expect(ethDaiVault.distributeFee()).to.be.revertedWith("INVALID")
+
+    });
+
+    it("should distribute fees(100%) to team address ", async () => {
+
+        await tDai.transfer(yieldWalletFactory.address, "1000");
+
+        expect((await tDai.balanceOf(yieldWalletFactory.address)).toString()).to.be.equal("1000") // factory balance
+
+        // Chnage team address
+        await yieldWalletFactory.changeTeamFeeAddress(signers[3].address);
+
+        let distribute = await yieldWalletFactory.distributeFee(tDai.address)
+
+        expect(distribute).to.emit(tDai, "Transfer").withArgs(yieldWalletFactory.address, signers[3].address, "1000"); // 100% of factory balance
+        expect(distribute).to.emit(yieldWalletFactory, "DistributeFee").withArgs(tDai.address, "1000");
+
+
+        expect((await tDai.balanceOf(yieldWalletFactory.address)).toString()).to.be.equal("0") // 0% remaining in contract balance
+
+    });
+
+  })
 })

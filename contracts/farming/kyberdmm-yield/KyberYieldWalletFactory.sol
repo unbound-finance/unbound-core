@@ -7,11 +7,18 @@ import './KyberYieldWallet.sol';
 
 contract KyberYieldWalletFactory is Ownable {
 
+    using SafeERC20 for IERC20;
+
+    address public team; // Address of team where part of reward will be sent
     address public farmingContract; // DMM contract address where LPTs will be staked
+
+    uint256 public constant teamShare = 2e17; // 1e18 is 100%, setting it to 20%
 
     mapping (address => uint256) public pids; // stakig token => pid mapping
 
     event YeildWalletFactory(address _wallet);
+    event DistributeFee(address _rewardToken, uint256 _amount);
+    event ChangeTeamFeeAddress(address _team);
 
     constructor (address _farming) {
         farmingContract = _farming;
@@ -43,5 +50,33 @@ contract KyberYieldWalletFactory is Ownable {
         for(uint256 id = 0; id < _pids.length; id++){
             pids[_stakingTokens[id]] = _pids[id];
         }
+    }
+
+    /**
+     * @notice Distributes the fee collected to the team address
+     * @param token Instance of reward token
+     */
+    function distributeFee(IERC20 token) external {
+        // check if team is initialized properly
+        require(team != address(0), 'INVALID');
+        uint256 amount = token.balanceOf(address(this));
+        
+        // transfer the whole reward fee collected to team
+        token.transfer(team, amount);
+
+        emit DistributeFee(address(token), amount);
+    }
+
+    /**
+     * @notice Changes address where the fees should be received
+     * @param _team New fee to address
+     */
+    function changeTeamFeeAddress(address _team)
+        external
+        onlyOwner
+    {
+        require(_team != address(0), 'IA');
+        team = _team;
+        emit ChangeTeamFeeAddress(_team);
     }
 }

@@ -6,8 +6,11 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 //interface
 import '../../interfaces/IMasterChefSushi.sol';
+import './interfaces/ISushiSwapYieldWalletFactory.sol';
 
 contract SushiSwapYieldWallet {
+
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     address public pair;
@@ -17,12 +20,15 @@ contract SushiSwapYieldWallet {
     address public farming; // Address where LPTs will be staked
     uint256 public pid; // pid of the pool for pair
 
+    address public factory; // Address of the yield wallet factory
+
     IERC20 public rewardToken; // Reward token instance;
 
     mapping(address => bool) allowed;
 
     event Claim(address _token, address _to, uint256 _amount);
     event Deposit(uint256 _pid, uint256 _amount);
+    event WithdrawFund(address indexed token, address to, uint256 amount);
 
     modifier onlyVault() {
         require(msg.sender == vault, 'NA');
@@ -51,6 +57,7 @@ contract SushiSwapYieldWallet {
         vault = _vault;
         farming = _farming;
         pid = _pid;
+        factory = msg.sender;
 
         rewardToken = IERC20(IMasterChefSushi(_farming).sushi());
 
@@ -94,8 +101,7 @@ contract SushiSwapYieldWallet {
      * @param _to User address where token will be sent
      */
     function claim(address _token, address _to) external onlyOwner {
-        uint256 transferAmount = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).transfer(_to, transferAmount);
+        uint256 transferAmount = _withdrawFunds(IERC20(_token), _to, IERC20(_token).balanceOf(address(this)));
         emit Claim(_token, _to, transferAmount);
     }
 
@@ -123,7 +129,27 @@ contract SushiSwapYieldWallet {
         IERC20 _token,
         address _to,
         uint256 _amount
-    ) internal {
-        _token.safeTransfer(_to, _amount);
+    ) internal returns(uint256 userShare){
+
+        if(address(_token) == pair){
+
+            _token.safeTransfer(_to, _amount);
+            
+            emit WithdrawFund(address(_token), _to, _amount);
+
+        } else {
+
+            uint256 teamSharePercentage = ISushiSwapYieldWalletFactory(factory).teamShare();
+
+            uint256 teamShare = _amount.mul(teamSharePercentage).div(1e18);
+            userShare = _amount.sub(teamShare);
+
+            _token.safeTransfer(factory, teamShare);
+            _token.safeTransfer(_to, userShare);
+
+            emit WithdrawFund(address(_token), factory, teamShare);
+            emit WithdrawFund(address(_token), _to, userShare);
+
+        }
     }
 }
