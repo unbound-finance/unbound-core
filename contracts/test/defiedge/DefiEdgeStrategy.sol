@@ -3,14 +3,14 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 
-import "./base/UniswapPoolActions.sol";
-import "./base/StrategyBase.sol";
+import './base/UniswapPoolActions.sol';
+import './base/StrategyBase.sol';
 
-import "./libraries/LiquidityHelper.sol";
+import './libraries/LiquidityHelper.sol';
 
 contract DefiEdgeStrategy is UniswapPoolActions {
     using SafeMath for uint256;
@@ -44,7 +44,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 pool.token1(),
                 pool.fee()
             ) == address(pool),
-            "IP"
+            'IP'
         );
         operator = _operator;
         for (uint256 i = 0; i < _ticks.length; i++) {
@@ -75,7 +75,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             uint256 share
         )
     {
-        require(!onHold, "H");
+        require(!onHold, 'H');
 
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
@@ -104,14 +104,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         ticks[0].amount1 = ticks[0].amount1.add(amount1);
 
         // prevent front running of strategy fee
-        require(share >= _minShare, "SC");
+        require(share >= _minShare, 'SC');
 
         // price slippage check
-        require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
+        require(amount0 >= _amount0Min && amount1 >= _amount1Min, 'S');
 
         // share limit
         if (limit != 0) {
-            require(getTotalSupply() <= limit, "L");
+            require(getTotalSupply() <= limit, 'L');
         }
 
         // emit event
@@ -130,7 +130,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _amount1Min
     ) external returns (uint256 amount0, uint256 amount1) {
         // check if the user has sufficient shares
-        require(balanceOf(msg.sender) >= _shares, "INS");
+        require(balanceOf(msg.sender) >= _shares, 'INS');
 
         uint256 collect0;
         uint256 collect1;
@@ -180,7 +180,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         amount1 = collect1.add(unused1);
 
         // check slippage
-        require(_amount0Min <= amount0 && _amount1Min <= amount1, "S");
+        require(_amount0Min <= amount0 && _amount1Min <= amount1, 'S');
 
         // burn shares
         _burn(msg.sender, _shares);
@@ -299,7 +299,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         int24 tickUpper,
         uint128 liquidity
     ) external onlyGovernance {
-        require(!freezeEmergency, "L");
+        require(!freezeEmergency, 'L');
         if (liquidity > 0) {
             pool.burn(tickLower, tickUpper, liquidity);
             (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
