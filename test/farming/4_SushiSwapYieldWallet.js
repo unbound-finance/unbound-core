@@ -6,7 +6,7 @@ const {
   buildPermitParams,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
+} = require('../helpers/contract-helpers')
 const { zeroPad } = require('ethers/lib/utils')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
@@ -234,12 +234,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let KyberYieldWallet = await ethers.getContractFactory(
-        'KyberYieldWallet'
+      let SushiSwapYieldWallet = await ethers.getContractFactory(
+        'SushiSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        KyberYieldWallet.interface.fragments,
+        SushiSwapYieldWallet.interface.fragments,
         signers[0]
       )
 

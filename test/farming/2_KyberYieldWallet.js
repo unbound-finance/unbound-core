@@ -7,7 +7,7 @@ const {
   buildPermitParamsKyberDmm,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
+} = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'

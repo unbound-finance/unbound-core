@@ -4,9 +4,10 @@ const BigNumber = require('bignumber.js')
 BigNumber.set({ DECIMAL_PLACES: 0, ROUNDING_MODE: 1 })
 const {
   buildPermitParams,
+  buildPermitParamsKyberDmm,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
+} = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'
@@ -18,8 +19,8 @@ let und
 let tEth
 let tDai
 let weth
-let uniswapFactory
-let uniswapRouter
+let kyberDmmFactory
+let kyberDmmRouter
 let ethDaiPair
 let undDaiPair
 let vaultFactory
@@ -43,34 +44,34 @@ let accountsPkey = [
   '0xbb4a887e10689e6b2574760c2965a3cfc6013062b2d9f71bb6ce5cf08546e61a',
 ]
 
-describe('UniswapV2Vault', function () {
+describe('KyberVault', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
 
-    let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
-    uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
+    let KyberDMMFactory = await ethers.getContractFactory('DMMFactory')
+    kyberDmmFactory = await KyberDMMFactory.deploy(zeroAddress)
 
     let WETH9 = await ethers.getContractFactory('WETH9')
     weth = await WETH9.deploy()
 
-    let UniswapV2Router02 = await ethers.getContractFactory('UniswapV2Router02')
-    uniswapRouter = await UniswapV2Router02.deploy(
-      uniswapFactory.address,
+    let KyberDMMRouter02 = await ethers.getContractFactory('DMMRouter02')
+    kyberDmmRouter = await KyberDMMRouter02.deploy(
+      kyberDmmFactory.address,
       weth.address
     )
 
-    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
+    let Oracle = await ethers.getContractFactory('KyberDMMPriceProvider')
     oracleLibrary = await Oracle.deploy()
 
     let VaultFactory = await ethers.getContractFactory(
-      'UniswapV2VaultFactory',
+      'KyberVaultFactory',
       {
-        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
+        libraries: { KyberDMMPriceProvider: oracleLibrary.address },
       }
     )
 
-    vaultFactory = await VaultFactory.deploy(governance, uniswapFactory.address);
+    vaultFactory = await VaultFactory.deploy(governance, kyberDmmFactory.address);
 
     let UnboundToken = await ethers.getContractFactory('UnboundToken')
     und = await UnboundToken.deploy(signers[0].address)
@@ -81,29 +82,32 @@ describe('UniswapV2Vault', function () {
     let TestDai = await ethers.getContractFactory('TestDai')
     tDai = await TestDai.deploy(signers[0].address, '1337')
 
-    await uniswapFactory.createPair(und.address, tDai.address)
-    await uniswapFactory.createPair(tEth.address, tDai.address)
+    await kyberDmmFactory.createPool(und.address, tDai.address, 20000)
+    await kyberDmmFactory.createPool(tEth.address, tDai.address, 20000)
 
-    undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
-    ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
+    undDaiPair = await kyberDmmFactory.getPools(und.address, tDai.address)
+    ethDaiPair = await kyberDmmFactory.getPools(tEth.address, tDai.address)
 
-    ethDaiPair = await ethers.getContractAt('UniswapV2Pair', ethDaiPair)
+    undDaiPair = undDaiPair[0]
+    ethDaiPair = await ethers.getContractAt('DMMPool', ethDaiPair[0])
 
     let daiAmount = ethers.utils
       .parseEther(((Number(ethPrice) / 100000000) * 1).toString())
       .toString()
     let ethAmount = ethers.utils.parseEther('1').toString()
 
-    await tDai.approve(uniswapRouter.address, daiAmount)
-    await tEth.approve(uniswapRouter.address, ethAmount)
+    await tDai.approve(kyberDmmRouter.address, daiAmount)
+    await tEth.approve(kyberDmmRouter.address, ethAmount)
 
-    await uniswapRouter.addLiquidity(
+    await kyberDmmRouter.addLiquidity(
       tDai.address,
       tEth.address,
+      ethDaiPair.address,
       daiAmount,
       ethAmount,
       daiAmount,
       ethAmount,
+      [0, MAX_UINT_AMOUNT],
       signers[0].address,
       MAX_UINT_AMOUNT
     )
@@ -126,7 +130,7 @@ describe('UniswapV2Vault', function () {
     )
 
     ethDaiVault = await vaultFactory.vaultByIndex(1)
-    ethDaiVault = await ethers.getContractAt('UniswapV2Vault', ethDaiVault)
+    ethDaiVault = await ethers.getContractAt('KyberVault', ethDaiVault)
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
@@ -305,7 +309,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -328,7 +332,7 @@ describe('UniswapV2Vault', function () {
             r,
             s
           )
-      ).to.be.revertedWith('UniswapV2: EXPIRED')
+      ).to.be.revertedWith('ERC20Permit: EXPIRED')
     })
 
     it('should revert if permit signature is invalid', async function () {
@@ -339,7 +343,7 @@ describe('UniswapV2Vault', function () {
       const permitAmount = ethers.utils.parseEther('1').toString()
       const dummyPermitAmount = ethers.utils.parseEther('2').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -362,7 +366,7 @@ describe('UniswapV2Vault', function () {
             r,
             s
           )
-      ).to.be.revertedWith('UniswapV2: INVALID_SIGNATURE')
+      ).to.be.revertedWith('ERC20Permit: INVALID_SIGNATURE')
     })
 
     it("should revert if owner doesn't have sufficient lpt balance", async function () {
@@ -376,7 +380,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = new BigNumber(ownerLPTBalance).plus('1').toFixed()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -409,7 +413,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -446,7 +450,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -482,7 +486,7 @@ describe('UniswapV2Vault', function () {
         const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
         const permitAmount = ethers.utils.parseEther('1').toString()
   
-        const msgParams = buildPermitParams(
+        const msgParams = buildPermitParamsKyberDmm(
           chainId,
           ethDaiPair.address,
           signers[0].address,
@@ -515,7 +519,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -569,7 +573,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -660,7 +664,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -740,7 +744,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('2.43').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -820,7 +824,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -887,7 +891,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -950,7 +954,7 @@ describe('UniswapV2Vault', function () {
 
       const nonce2 = (await ethDaiPair.nonces(signers[0].address)).toString()
 
-      const msgParams2 = buildPermitParams(
+      const msgParams2 = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -994,7 +998,7 @@ describe('UniswapV2Vault', function () {
       const nonce = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount = ethers.utils.parseEther('1').toString()
 
-      const msgParams = buildPermitParams(
+      const msgParams = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
@@ -1058,7 +1062,7 @@ describe('UniswapV2Vault', function () {
       const nonce2 = (await ethDaiPair.nonces(signers[0].address)).toString()
       const permitAmount2 = ethers.utils.parseEther('5.65').toString()
 
-      const msgParams2 = buildPermitParams(
+      const msgParams2 = buildPermitParamsKyberDmm(
         chainId,
         ethDaiPair.address,
         signers[0].address,
