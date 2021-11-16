@@ -1082,6 +1082,68 @@ describe('DfynYieldWallet', function () {
 
   })
 
+  describe('#setVestingConfig & getUserVestingInfo', async () => {
+
+    beforeEach(async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+      await dfynToken.transfer(rewardFactory.address, "300000000000000000000000");
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+    })
+
+    it('should revert if caller is not user', async function () {
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let DfynYieldWallet = await ethers.getContractFactory(
+        'DfynYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        DfynYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      await expect(yieldwallet.connect(signers[1]).setVestingConfig(false)).to.be.revertedWith('NA')
+    })
+
+    it('should set vesting config to false', async function () {
+
+      
+      
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      
+      let DfynYieldWallet = await ethers.getContractFactory(
+        'DfynYieldWallet'
+      )
+      let yieldwallet = new ethers.Contract(
+        wallet,
+        DfynYieldWallet.interface.fragments,
+        signers[0]
+      )
+      
+      let config1 = await yieldwallet.getUserVestingInfo()
+      expect(config1.hasSetConfig).to.be.equal(false)
+
+      await rewardFactory.notifyRewardAmounts();
+
+      await yieldwallet.setVestingConfig(false)
+
+      let config2 = await yieldwallet.getUserVestingInfo()
+
+      expect(config2.hasSetConfig).to.be.equal(true)
+      expect(config2.hasOptForVesting).to.be.equal(false)
+
+    })
+
+  })
+
 })
 
 

@@ -12,6 +12,11 @@ interface IStakingRewards {
         uint256 claimable;
     }
 
+    struct UserVestingInfo {
+        bool hasOptForVesting;
+        bool hasSetConfig;
+    }
+
     function stakingRewardsInfoByStakingToken(address stakingToken) external view returns(StakingRewardsInfo memory);
     
     function rewardsToken() external view returns(address);
@@ -27,4 +32,8 @@ interface IStakingRewards {
     function exit() external;
     
     function getReward() external;
+
+    function setVestingConfig(bool _setConfig) external;
+
+    function getUserVestingInfo(address account) external view returns (UserVestingInfo memory);
 }
