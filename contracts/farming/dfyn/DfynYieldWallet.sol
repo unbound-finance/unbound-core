@@ -99,6 +99,25 @@ contract DfynYieldWallet {
     }
 
     /**
+     * @notice Set Vesting config for rewards
+     * @param _config true if want to vest rewards or false if want to burn remaining rewards
+     */
+    function setVestingConfig(bool _config) external onlyOwner {
+
+        IStakingRewards(stakingContract).setVestingConfig(_config);
+
+    }
+
+    /**
+     * @notice Get user vesting information
+     */
+    function getUserVestingInfo() external view returns(IStakingRewards.UserVestingInfo memory) {
+
+        return IStakingRewards(stakingContract).getUserVestingInfo(address(this));
+
+    }
+
+    /**
      * @notice Claim the tokens from the contract
      * @param _token Address of the token contract
      * @param _to User address where token will be sent
