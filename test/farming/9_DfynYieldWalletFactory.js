@@ -6,7 +6,7 @@ const {
   buildPermitParams,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
+} = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'
@@ -29,20 +29,17 @@ let feedEthUsd
 let ethDaiVault
 let yieldWalletFactory
 
-let masterchef;
-let sushiToken; 
+let rewardFactory;
+let dQuickToken; 
 
 const ethPrice = '320000000000' // $3200
-const daiPrice = '100000000' // $1
 
 const CR = '200000000' // 200%
 const LTV = '50000000' // 50%
 const PROTOCOL_FEE = '500000' // 0.5%
 const stakeFee = '500000' // 0.5%
-const safuShare = '40000000' // 40%
-const SECOND_BASE = '100000000' // 1e8
 
-describe('SushiSwapYieldWalletFactory', function () {
+describe('DfynYieldWalletFactory', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
@@ -129,17 +126,18 @@ describe('SushiSwapYieldWalletFactory', function () {
 
 
     let TestToken = await ethers.getContractFactory('TestToken')
-    sushiToken = await TestToken.deploy("Sushi Token", "SUSHI", 18, signers[0].address)
+    dQuickToken = await TestToken.deploy("Dragon Quick", "dQuick", 18, signers[0].address)
 
-    let MasterChef = await ethers.getContractFactory('MasterChef')
-    masterchef = await MasterChef.deploy(sushiToken.address, signers[0].address, "100000000000000000000")
+    let currentBlock = await ethers.provider.getBlockNumber()
+    let timestamp = (await ethers.provider.getBlock(currentBlock)).timestamp
 
-    await masterchef.add("4000", ethDaiPair.address, false);
+    let DfynStakingRewardsFactory = await ethers.getContractFactory('DfynStakingRewardsFactory')
+    rewardFactory = await DfynStakingRewardsFactory.deploy(dQuickToken.address, timestamp + 10)
 
-    let SushiSwapYieldWalletFactory = await ethers.getContractFactory(
-      'SushiSwapYieldWalletFactory'
+    let DfynYieldWalletFactory = await ethers.getContractFactory(
+      'DfynYieldWalletFactory'
     )
-    yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
+    yieldWalletFactory = await DfynYieldWalletFactory.deploy(rewardFactory.address)
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
@@ -161,7 +159,7 @@ describe('SushiSwapYieldWalletFactory', function () {
   describe('#constructor', async () => {
 
     it("should set farming contract address", async function() { 
-      expect(await yieldWalletFactory.farmingContract()).to.equal(masterchef.address);
+      expect(await yieldWalletFactory.rewardFactoryContract()).to.equal(rewardFactory.address);
     });
 
     it("should set correct owner address", async function() { 
@@ -172,13 +170,12 @@ describe('SushiSwapYieldWalletFactory', function () {
 
   describe('#create', async () => {
 
-    it('should revert if pid is invalid for pool', async function () {
+    it('should revert if staking token is invalid for pool', async function () {
       
-      await masterchef.add("10", sushiToken.address, false);
-      await yieldWalletFactory.setPids([ethDaiPair.address], [1]);
+      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       await expect(yieldWalletFactory.create(
-        ethDaiPair.address,
+        dQuickToken.address,
         signers[0].address,
         ethDaiVault.address
       )).to.be.revertedWith("IP");
@@ -186,6 +183,9 @@ describe('SushiSwapYieldWalletFactory', function () {
     })
 
     it('should create yield wallet contract without revert', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+
       await yieldWalletFactory.create(
         ethDaiPair.address,
         signers[0].address,
@@ -194,6 +194,9 @@ describe('SushiSwapYieldWalletFactory', function () {
     })
 
     it('should create new yield wallet for first time user staking LPT', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -216,6 +219,9 @@ describe('SushiSwapYieldWalletFactory', function () {
     })
 
     it('should emit event when creating new yield wallet for first time user locking LPT', async function () {
+      
+      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -234,47 +240,6 @@ describe('SushiSwapYieldWalletFactory', function () {
       
     })
   })
-
-  describe('#setPids', async () => {
-
-    it('should revert if caller is not owner', async function () {
-
-      await expect(
-        yieldWalletFactory
-          .connect(signers[1])
-          .setPids([ethDaiPair.address], [0]))
-        .to.be.revertedWith("Ownable: caller is not the owner")
-
-    })
-
-    it('should revert if input argument is invalid', async function () {
-
-      await expect(
-        yieldWalletFactory
-          .setPids([ethDaiPair.address], [0, 1]))
-        .to.be.revertedWith("IA")
-
-    })
-
-    it('should set correct pid for address', async function () {
-
-      await yieldWalletFactory.setPids([ethDaiPair.address], [1]);
-
-      expect(await yieldWalletFactory.pids(ethDaiPair.address)).to.eq("1");
-
-    })
-
-    it('should emit set pids event', async function () {
-
-      await expect(yieldWalletFactory.setPids([ethDaiPair.address], [1]))
-        .to.emit(yieldWalletFactory, "SetPids")
-        .withArgs([ethDaiPair.address], [1]);
-
-
-    })
-  
-  })
-
 
   describe("#changeTeamFeeAddress", function() {
     it("should revert if not called by owner", async function() { 

@@ -6,7 +6,7 @@ const {
   buildPermitParams,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
+} = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'
@@ -28,9 +28,9 @@ let oracleLibrary
 let feedEthUsd
 let ethDaiVault
 let yieldWalletFactory
-let kncRewardToken;
-let kyberRewardLocker;
-let kyberFairlaunch;
+
+let masterchef;
+let sushiToken; 
 
 const ethPrice = '320000000000' // $3200
 const daiPrice = '100000000' // $1
@@ -42,30 +42,30 @@ const stakeFee = '500000' // 0.5%
 const safuShare = '40000000' // 40%
 const SECOND_BASE = '100000000' // 1e8
 
-describe('KyberYieldWalletFactory', function () {
+describe('SushiSwapYieldWalletFactory', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
 
-    let UniswapV2Factory = await ethers.getContractFactory('DMMFactory')
+    let UniswapV2Factory = await ethers.getContractFactory('UniswapV2Factory')
     uniswapFactory = await UniswapV2Factory.deploy(zeroAddress)
 
     let WETH9 = await ethers.getContractFactory('WETH9')
     weth = await WETH9.deploy()
 
-    let UniswapV2Router02 = await ethers.getContractFactory('DMMRouter02')
+    let UniswapV2Router02 = await ethers.getContractFactory('UniswapV2Router02')
     uniswapRouter = await UniswapV2Router02.deploy(
       uniswapFactory.address,
       weth.address
     )
 
-    let Oracle = await ethers.getContractFactory('KyberDMMPriceProvider')
+    let Oracle = await ethers.getContractFactory('UniswapV2PriceProvider')
     oracleLibrary = await Oracle.deploy()
 
     let VaultFactory = await ethers.getContractFactory(
-      'KyberVaultFactory',
+      'UniswapV2VaultFactory',
       {
-        libraries: { KyberDMMPriceProvider: oracleLibrary.address },
+        libraries: { UniswapV2PriceProvider: oracleLibrary.address },
       }
     )
 
@@ -80,14 +80,13 @@ describe('KyberYieldWalletFactory', function () {
     let TestDai = await ethers.getContractFactory('TestDai')
     tDai = await TestDai.deploy(signers[0].address, '1337')
 
-    await uniswapFactory.createPool(und.address, tDai.address, 20000)
-    await uniswapFactory.createPool(tEth.address, tDai.address, 20000)
+    await uniswapFactory.createPair(und.address, tDai.address)
+    await uniswapFactory.createPair(tEth.address, tDai.address)
 
-    undDaiPair = await uniswapFactory.getPools(und.address, tDai.address)
-    ethDaiPair = await uniswapFactory.getPools(tEth.address, tDai.address)
+    undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
+    ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
 
-    undDaiPair = undDaiPair[0]
-    ethDaiPair = await ethers.getContractAt('DMMPool', ethDaiPair[0])
+    ethDaiPair = await ethers.getContractAt('UniswapV2Pair', ethDaiPair)
 
     let daiAmount = ethers.utils
       .parseEther(((Number(ethPrice) / 100000000) * 1).toString())
@@ -100,12 +99,10 @@ describe('KyberYieldWalletFactory', function () {
     await uniswapRouter.addLiquidity(
       tDai.address,
       tEth.address,
-      ethDaiPair.address,
       daiAmount,
       ethAmount,
       daiAmount,
       ethAmount,
-      [0, MAX_UINT_AMOUNT],
       signers[0].address,
       MAX_UINT_AMOUNT
     )
@@ -128,34 +125,21 @@ describe('KyberYieldWalletFactory', function () {
     )
 
     ethDaiVault = await vaultFactory.vaultByIndex(1)
-    ethDaiVault = await ethers.getContractAt('KyberVault', ethDaiVault)
+    ethDaiVault = await ethers.getContractAt('UniswapV2Vault', ethDaiVault)
 
 
     let TestToken = await ethers.getContractFactory('TestToken')
-    kncRewardToken = await TestToken.deploy("Kyber Token", "KNC", 18, signers[0].address)
+    sushiToken = await TestToken.deploy("Sushi Token", "SUSHI", 18, signers[0].address)
 
-    let KyberRewardLocker = await ethers.getContractFactory('KyberRewardLocker')
-    kyberRewardLocker = await KyberRewardLocker.deploy(signers[0].address)
+    let MasterChef = await ethers.getContractFactory('MasterChef')
+    masterchef = await MasterChef.deploy(sushiToken.address, signers[0].address, "100000000000000000000")
 
-    
-    let KyberFairLaunch = await ethers.getContractFactory('KyberFairLaunch')
-    kyberFairlaunch = await KyberFairLaunch.deploy(signers[0].address, [kncRewardToken.address], kyberRewardLocker.address)
-    
-    await kyberRewardLocker.addRewardsContract(kncRewardToken.address, kyberFairlaunch.address);
-    await kyberRewardLocker.setVestingDuration(kncRewardToken.address, "100000");
+    await masterchef.add("4000", ethDaiPair.address, false);
 
-    let currentBlock = await ethers.provider.getBlockNumber()
-    let startBlock = Number(currentBlock) + 2
-    let endBlock = Number(startBlock) + 200000
-    // console.log(startBlock)
-    // console.log(endBlock)
-
-    await kyberFairlaunch.addPool(ethDaiPair.address, startBlock, endBlock, ["4206070000000000000"]);
-
-    let KyberYieldWalletFactory = await ethers.getContractFactory(
-      'KyberYieldWalletFactory'
+    let SushiSwapYieldWalletFactory = await ethers.getContractFactory(
+      'SushiSwapYieldWalletFactory'
     )
-    yieldWalletFactory = await KyberYieldWalletFactory.deploy(kyberFairlaunch.address)
+    yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
@@ -177,7 +161,7 @@ describe('KyberYieldWalletFactory', function () {
   describe('#constructor', async () => {
 
     it("should set farming contract address", async function() { 
-      expect(await yieldWalletFactory.farmingContract()).to.equal(kyberFairlaunch.address);
+      expect(await yieldWalletFactory.farmingContract()).to.equal(masterchef.address);
     });
 
     it("should set correct owner address", async function() { 
@@ -189,8 +173,9 @@ describe('KyberYieldWalletFactory', function () {
   describe('#create', async () => {
 
     it('should revert if pid is invalid for pool', async function () {
-
-      await yieldWalletFactory.setPids([ethDaiPair.address], [2]);
+      
+      await masterchef.add("10", sushiToken.address, false);
+      await yieldWalletFactory.setPids([ethDaiPair.address], [1]);
 
       await expect(yieldWalletFactory.create(
         ethDaiPair.address,
@@ -230,7 +215,7 @@ describe('KyberYieldWalletFactory', function () {
       )
     })
 
-    it('should emit event when creating new yield wallet for first time user staking LPT', async function () {
+    it('should emit event when creating new yield wallet for first time user locking LPT', async function () {
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )
@@ -238,15 +223,14 @@ describe('KyberYieldWalletFactory', function () {
       let lockAmount = ethers.utils.parseEther('1').toString()
 
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
       await ethDaiVault.lock(
         lockAmount,
         signers[0].address,
         0
       )
 
-      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true)
-        ).to.emit(yieldWalletFactory, "YeildWalletFactory")
+      await expect(ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true))
+        .to.emit(yieldWalletFactory, "YeildWalletFactory")
       
     })
   })
@@ -279,8 +263,18 @@ describe('KyberYieldWalletFactory', function () {
       expect(await yieldWalletFactory.pids(ethDaiPair.address)).to.eq("1");
 
     })
+
+    it('should emit set pids event', async function () {
+
+      await expect(yieldWalletFactory.setPids([ethDaiPair.address], [1]))
+        .to.emit(yieldWalletFactory, "SetPids")
+        .withArgs([ethDaiPair.address], [1]);
+
+
+    })
   
   })
+
 
   describe("#changeTeamFeeAddress", function() {
     it("should revert if not called by owner", async function() { 
@@ -323,5 +317,6 @@ describe('KyberYieldWalletFactory', function () {
 
     });
 
-  })
+})
+
 })

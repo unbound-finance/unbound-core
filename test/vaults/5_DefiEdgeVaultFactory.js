@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 const FACTORY = require('@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json')
 const POOL = require('@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json')
 
-const { encodePriceSqrt, expandTo18Decimals, calculateTick, expandToString } = require('./helpers/utils')
+const { encodePriceSqrt, expandTo18Decimals, calculateTick, expandToString } = require('../helpers/utils')
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 const ethPrice = "320000000000"; // $3200

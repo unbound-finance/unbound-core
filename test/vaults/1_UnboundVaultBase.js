@@ -2,7 +2,7 @@ const { expect } = require('chai')
 const { ethers } = require('hardhat')
 const BigNumber = require('bignumber.js')
 BigNumber.set({ DECIMAL_PLACES: 0, ROUNDING_MODE: 1 })
-const { MAX_UINT_AMOUNT } = require('./helpers/contract-helpers')
+const { MAX_UINT_AMOUNT } = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'

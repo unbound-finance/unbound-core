@@ -6,8 +6,7 @@ const {
   buildPermitParams,
   getSignatureFromTypedData,
   MAX_UINT_AMOUNT,
-} = require('./helpers/contract-helpers')
-const { zeroPad } = require('ethers/lib/utils')
+} = require('../helpers/contract-helpers')
 
 const zeroAddress = '0x0000000000000000000000000000000000000000'
 const BASE = '1000000000000000000'
@@ -30,27 +29,22 @@ let feedEthUsd
 let ethDaiVault
 let yieldWalletFactory
 
-let masterchef;
-let sushiToken; 
+let rewardFactory;
+let dQuickToken; 
 
 const ethPrice = '320000000000' // $3200
-const daiPrice = '100000000' // $1
 
 const CR = '200000000' // 200%
 const LTV = '50000000' // 50%
 const PROTOCOL_FEE = '500000' // 0.5%
 const stakeFee = '500000' // 0.5%
-const safuShare = '40000000' // 40%
-const SECOND_BASE = '100000000' // 1e8
-
-const REWARD_VESTING_DURATION = 20;
 
 let accountsPkey = [
   "0x9d297c3cdf8af0abffbf00db443d56a62798d1d562ae19a668ac73eb9052f631",
   "0xbb4a887e10689e6b2574760c2965a3cfc6013062b2d9f71bb6ce5cf08546e61a"
 ]
 
-describe('SushiSwapYieldWallet', function () {
+describe('QuickSwapYieldWallet', function () {
   beforeEach(async function () {
     signers = await ethers.getSigners()
     governance = signers[0].address
@@ -137,17 +131,18 @@ describe('SushiSwapYieldWallet', function () {
 
 
     let TestToken = await ethers.getContractFactory('TestToken')
-    sushiToken = await TestToken.deploy("Sushi Token", "SUSHI", 18, signers[0].address)
+    dQuickToken = await TestToken.deploy("Dragon Quick", "dQuick", 18, signers[0].address)
 
-    let MasterChef = await ethers.getContractFactory('MasterChef')
-    masterchef = await MasterChef.deploy(sushiToken.address, signers[0].address, "100000000000000000000")
+    let currentBlock = await ethers.provider.getBlockNumber()
+    let timestamp = (await ethers.provider.getBlock(currentBlock)).timestamp
 
-    await masterchef.add("4000", ethDaiPair.address, false);
+    let StakingRewardsFactory = await ethers.getContractFactory('StakingRewardsFactory')
+    rewardFactory = await StakingRewardsFactory.deploy(dQuickToken.address, timestamp + 10)
 
-    let SushiSwapYieldWalletFactory = await ethers.getContractFactory(
-      'SushiSwapYieldWalletFactory'
+    let QuickSwapYieldWalletFactory = await ethers.getContractFactory(
+      'QuickSwapYieldWalletFactory'
     )
-    yieldWalletFactory = await SushiSwapYieldWalletFactory.deploy(masterchef.address)
+    yieldWalletFactory = await QuickSwapYieldWalletFactory.deploy(rewardFactory.address)
     await yieldWalletFactory.changeTeamFeeAddress(signers[3].address);
 
     await ethDaiVault.changeLTV(LTV)
@@ -169,6 +164,9 @@ describe('SushiSwapYieldWallet', function () {
   describe('#constructor', async () => {
     let yieldwalletInstance
     beforeEach(async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -181,12 +179,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       yieldwalletInstance = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
     })
@@ -204,24 +202,34 @@ describe('SushiSwapYieldWallet', function () {
     })
 
     it('should set correct farmin contract address', async function () {
-      expect(await yieldwalletInstance.farming()).to.be.equal(masterchef.address)
+      expect(await yieldwalletInstance.stakingRewardFactory()).to.be.equal(rewardFactory.address)
     })
 
-    it('should set correct pid for pool', async function () {
-      expect(await yieldwalletInstance.pid()).to.be.equal("0")
+    it('should set staking contract address', async function () {
+      expect(await yieldwalletInstance.stakingContract()).to.not.equal(zeroAddress)
     })
 
     it('should approve proper allowance to farming contract', async function () {
-      expect(await ethDaiPair.allowance(yieldwalletInstance.address, masterchef.address)).to.be.equal(MAX_UINT_AMOUNT)
+      let stakingContract = await yieldwalletInstance.stakingContract();
+      expect(await ethDaiPair.allowance(yieldwalletInstance.address, stakingContract)).to.be.equal(MAX_UINT_AMOUNT)
     })
 
     it('should set reward token contract address', async function () {
-      expect(await yieldwalletInstance.rewardToken()).to.be.equal(sushiToken.address)
+      expect(await yieldwalletInstance.rewardsToken()).to.be.equal(dQuickToken.address)
     })
   })
 
   describe('#deposit', async () => {
+
+    beforeEach(async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
+    })
+    
     it('should revert if caller is not vault', async function () {
+
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -234,12 +242,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let KyberYieldWallet = await ethers.getContractFactory(
-        'KyberYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        KyberYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
@@ -262,18 +270,17 @@ describe('SushiSwapYieldWallet', function () {
       let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
-      expect(stake).to.emit(yieldwallet, "Deposit").withArgs(pid, lockAmount)
+      expect(stake).to.emit(yieldwallet, "Deposit").withArgs(lockAmount)
 
     })
 
@@ -299,6 +306,7 @@ describe('SushiSwapYieldWallet', function () {
 
     it('lock - should transfer LPT to farming contract on stake LPT', async function () {
 
+
       let lockAmount1 = ethers.utils.parseEther('0.1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount1)
 
@@ -311,7 +319,18 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount1, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-      let balanceBefore = (await ethDaiPair.balanceOf(masterchef.address)).toString()
+
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let stakingContract = await yieldwalletInstance.stakingContract();
+
+      let balanceBefore = (await ethDaiPair.balanceOf(stakingContract)).toString()
       let walletBalanceBefore = (await ethDaiPair.balanceOf(wallet)).toString()
 
       expect(walletBalanceBefore).to.be.equal("0")
@@ -331,7 +350,7 @@ describe('SushiSwapYieldWallet', function () {
         .plus(lockAmount2)
         .toString()
 
-      expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfter)
+      expect(await ethDaiPair.balanceOf(stakingContract)).to.be.equal(balanceAfter)
       expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(walletBalanceBefore)
     })
 
@@ -350,17 +369,17 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
       let info = await yieldwallet.getWalletInfo();
 
-      expect(info.amount.toString()).to.be.equal(lockAmount)
+      expect(info.stakedAmount.toString()).to.be.equal(lockAmount)
 
     })
 
@@ -378,10 +397,27 @@ describe('SushiSwapYieldWallet', function () {
       let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let stakingContract = await yieldwalletInstance.stakingContract();
 
-      expect(stake).to.emit(masterchef, "Deposit").withArgs(wallet, pid, lockAmount)
+      let StakingRewards = await ethers.getContractFactory(
+        'StakingRewards'
+      )
+      stakingContract = new ethers.Contract(
+        stakingContract,
+        StakingRewards.interface.fragments,
+        signers[0]
+      )
+
+      expect(stake).to.emit(stakingContract, "Staked").withArgs(wallet, lockAmount)
 
     })
 
@@ -400,52 +436,20 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(signers[0].address, ethDaiVault.address, lockAmount)
-      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
-      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, masterchef.address, lockAmount)
-
-    })
-
-    it('lock - should transfer reward sushi token to user if pending while staking ', async function () {
-
-      let lockAmount = ethers.utils.parseEther('2').toString()
-      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
-      let lock = await ethDaiVault.lock(
-        lockAmount,
-        signers[0].address,
-        0
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
-
-      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
-      
-      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-
-      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
-
-      let lock2 = await ethDaiVault.lock(
-        lockAmount,
-        signers[0].address,
-        0
-      )
-
-      let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, false);
-
-      expect(stake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "300000000000000000000")
-      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "60000000000000000000")
-      expect(stake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "240000000000000000000")
-
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
-      )
-      let yieldWallet = new ethers.Contract(
+      let yieldwalletInstance = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
+      let stakingContract = await yieldwalletInstance.stakingContract();
 
-      expect(stake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "60000000000000000000");
-      expect(stake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "240000000000000000000");
+      expect(lock).to.emit(ethDaiPair, "Transfer").withArgs(signers[0].address, ethDaiVault.address, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, wallet, lockAmount)
+      expect(stake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, stakingContract, lockAmount)
+
     })
 
     it('lockWithPermit - should increase yieldWalletDeposit amount on stake LPT', async function () {
@@ -480,7 +484,7 @@ describe('SushiSwapYieldWallet', function () {
     })
 
     it('lockWithPermit - should transfer LPT to yield wallet on stake LPT', async function () {
-      let balanceBefore = (await ethDaiPair.balanceOf(masterchef.address)).toString()
+
 
       const { chainId } = await ethers.provider.getNetwork()
 
@@ -503,11 +507,25 @@ describe('SushiSwapYieldWallet', function () {
 
       await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let stakingContract = await yieldwalletInstance.stakingContract();
+
+      let balanceBefore = "0"
+
       let balanceAfter = new BigNumber(balanceBefore)
         .plus(permitAmount)
         .toString()
 
-      expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfter)
+      expect(await ethDaiPair.balanceOf(stakingContract)).to.be.equal(balanceAfter)
     })
 
     it('lockWithPermit - should update correct info for user and pool in farming contract', async function () {
@@ -535,18 +553,18 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
       
       let info = await yieldwallet.getWalletInfo();
   
-      expect(info.amount.toString()).to.be.equal(permitAmount)
+      expect(info.stakedAmount.toString()).to.be.equal(permitAmount)
   
     })
   
@@ -573,11 +591,29 @@ describe('SushiSwapYieldWallet', function () {
   
       let stake = await ethDaiVault.stakeLP(yieldWalletFactory.address, permitAmount, true);
 
-      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)  
   
-  
-      expect(stake).to.emit(masterchef, "Deposit").withArgs(wallet, pid, permitAmount)
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      let stakingContract = await yieldwalletInstance.stakingContract();
+
+      let StakingRewards = await ethers.getContractFactory(
+        'StakingRewards'
+      )
+      stakingContract = new ethers.Contract(
+        stakingContract,
+        StakingRewards.interface.fragments,
+        signers[0]
+      )
+
+      expect(stake).to.emit(stakingContract, "Staked").withArgs(wallet, permitAmount)
   
     })
   
@@ -586,6 +622,9 @@ describe('SushiSwapYieldWallet', function () {
 
   describe('#withdraw', async () => {
     beforeEach(async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(lockAmount, signers[0].address, '1')
@@ -607,12 +646,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
@@ -639,14 +678,25 @@ describe('SushiSwapYieldWallet', function () {
 
     it("should transfer LPT back to user from farming wallet to user on unstake LPT", async function() {
       
-      let lockAmount = ethers.utils.parseEther('1').toString()
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)  
+  
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
 
-      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      let stakingContract = await yieldwalletInstance.stakingContract();
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
 
       expect(await ethDaiVault.yieldWalletDeposit(signers[0].address)).to.be.equal(lockAmount)
 
       let balanceBeforeVault = (await ethDaiPair.balanceOf(ethDaiVault.address)).toString()
-      let balanceBeforeFarming = (await ethDaiPair.balanceOf(masterchef.address)).toString()
+      let balanceBeforeFarming = (await ethDaiPair.balanceOf(stakingContract)).toString()
       let balanceBeforeWallet = (await ethDaiPair.balanceOf(wallet)).toString()
 
       expect(balanceBeforeWallet).to.be.equal("0")
@@ -659,7 +709,7 @@ describe('SushiSwapYieldWallet', function () {
       let balanceAfterFarming = (new BigNumber(balanceBeforeFarming).minus(collateral)).toFixed()
 
       expect(await ethDaiPair.balanceOf(ethDaiVault.address)).to.be.equal(balanceAfterVault)
-      expect(await ethDaiPair.balanceOf(masterchef.address)).to.be.equal(balanceAfterFarming)
+      expect(await ethDaiPair.balanceOf(stakingContract)).to.be.equal(balanceAfterFarming)
       expect(await ethDaiPair.balanceOf(wallet)).to.be.equal(balanceBeforeWallet)
 
     });
@@ -668,12 +718,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
       
@@ -684,9 +734,9 @@ describe('SushiSwapYieldWallet', function () {
       await ethDaiVault.unstakeLP(collateral);
       
       let infoAfter = await yieldwallet.getWalletInfo();
-      let infoAfterExpected = new BigNumber(infoBefore.amount.toString()).minus(collateral).toFixed();
+      let infoAfterExpected = new BigNumber(infoBefore.stakedAmount.toString()).minus(collateral).toFixed();
 
-      expect(infoAfter.amount.toString()).to.be.equal(infoAfterExpected)
+      expect(infoAfter.stakedAmount.toString()).to.be.equal(infoAfterExpected)
 
     })
 
@@ -698,14 +748,43 @@ describe('SushiSwapYieldWallet', function () {
       let unstake = await ethDaiVault.unstakeLP(collateral);
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-      let pid = await yieldWalletFactory.pids(ethDaiPair.address);
 
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let stakingContract = await yieldwalletInstance.stakingContract();
 
-      expect(unstake).to.emit(masterchef, "Withdraw").withArgs(wallet, pid, collateral)
+      let StakingRewards = await ethers.getContractFactory(
+        'StakingRewards'
+      )
+      stakingContract = new ethers.Contract(
+        stakingContract,
+        StakingRewards.interface.fragments,
+        signers[0]
+      )
+
+      expect(unstake).to.emit(stakingContract, "Withdrawn").withArgs(wallet, collateral)
 
     })
 
     it('unlock - should emit proper transfer event while unlock LPTs', async function () {
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldwalletInstance = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+      let stakingContract = await yieldwalletInstance.stakingContract();
 
       let debt = (await ethDaiVault.debt(signers[0].address)).toString()
       let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
@@ -713,42 +792,147 @@ describe('SushiSwapYieldWallet', function () {
       let unstake = await ethDaiVault.unstakeLP(collateral);
       let unlock = await ethDaiVault.unlock(debt, collateral);
 
-      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
-
-      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(masterchef.address, wallet, collateral)
+      expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(stakingContract, wallet, collateral)
       expect(unstake).to.emit(ethDaiPair, "Transfer").withArgs(wallet, ethDaiVault.address, collateral)
       expect(unlock).to.emit(ethDaiPair, "Transfer").withArgs(ethDaiVault.address, signers[0].address, collateral)
 
     })
 
-    it('unlock - should transfer sushi reward to user while unstaking', async function () {
+    // it('unlock - should transfer dQuick reward to user while unstaking', async function () {
       
-      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+    //   let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
 
-      let unstake = await ethDaiVault.unstakeLP(collateral);
+    //   let unstake = await ethDaiVault.unstakeLP(collateral);
+
+    //   let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+
+    //   expect(unstake).to.emit(dQuickToken, "Transfer").withArgs(rewardFactory.address, wallet, "500000000000000000000")
+    //   expect(unstake).to.emit(dQuickToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "100000000000000000000")
+    //   expect(unstake).to.emit(dQuickToken, "Transfer").withArgs(wallet, signers[0].address, "400000000000000000000")
+
+    //   let QuickSwapYieldWallet = await ethers.getContractFactory(
+    //     'QuickSwapYieldWallet'
+    //   )
+    //   let yieldWallet = new ethers.Contract(
+    //     wallet,
+    //     QuickSwapYieldWallet.interface.fragments,
+    //     signers[0]
+    //   )
+
+    //   expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, yieldWalletFactory.address, "100000000000000000000");
+    //   expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, signers[0].address, "400000000000000000000");
+    // })
+  })
+
+  describe('#getReward', async () => {
+    beforeEach(async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,300);
+      await dQuickToken.transfer(rewardFactory.address, "100000000000000000000");
+
+      let lockAmount = ethers.utils.parseEther('1').toString()
+      await ethDaiPair.approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault.lock(lockAmount, signers[0].address, '1')
+
+      await ethDaiVault.stakeLP(yieldWalletFactory.address, lockAmount, true);
+
+      // Transfer some extra und to user 0 to repay all debts
+      await ethDaiPair.transfer(signers[1].address, lockAmount)
+      await ethDaiPair
+        .connect(signers[1])
+        .approve(ethDaiVault.address, lockAmount)
+      await ethDaiVault
+        .connect(signers[1])
+        .lock(lockAmount, signers[1].address, '1')
+      await und.connect(signers[1]).transfer(signers[0].address, lockAmount)
+    })
+
+    it('should revert if caller is not user', async function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(masterchef.address, wallet, "500000000000000000000")
-      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "100000000000000000000")
-      expect(unstake).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "400000000000000000000")
-
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
-      let yieldWallet = new ethers.Contract(
+      let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
-      expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "100000000000000000000");
-      expect(unstake).to.emit(yieldWallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "400000000000000000000");
+      await expect(yieldwallet.connect(signers[1]).getReward()).to.be.revertedWith('NA')
+    })
+
+    it('unlock - should transfer dQuick reward to user', async function () {
+      
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      let stakingContract = await yieldWallet.stakingContract();
+
+
+      await rewardFactory.notifyRewardAmounts();
+
+      let reward = await yieldWallet.getReward();
+          
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(stakingContract, wallet, "333333333333333333")
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "66666666666666666")
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(wallet, signers[0].address, "266666666666666667")
+
+
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, yieldWalletFactory.address, "66666666666666666");
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, signers[0].address, "266666666666666667");
+    })
+
+    it('unlock - should emit reward paid event', async function () {
+      
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        QuickSwapYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      let stakingContract = await yieldWallet.stakingContract();
+      let StakingRewards = await ethers.getContractFactory(
+        'StakingRewards'
+      )
+      stakingContract = new ethers.Contract(
+        stakingContract,
+        StakingRewards.interface.fragments,
+        signers[0]
+      )
+
+      await rewardFactory.notifyRewardAmounts();
+
+      let reward = await yieldWallet.getReward();
+          
+      expect(reward).to.emit(stakingContract, "RewardPaid").withArgs(wallet, "333333333333333333")
     })
   })
 
   describe('#claim', async () => {
     it('should revert if caller is not user', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -761,12 +945,12 @@ describe('SushiSwapYieldWallet', function () {
 
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
 
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
@@ -778,6 +962,9 @@ describe('SushiSwapYieldWallet', function () {
     })
 
     it('should transfer token to user account', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -790,27 +977,30 @@ describe('SushiSwapYieldWallet', function () {
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
   
-      await sushiToken.transfer(wallet, "100")
+      await dQuickToken.transfer(wallet, "100")
   
-      let claim = await yieldwallet.claim(sushiToken.address, signers[0].address)
+      let claim = await yieldwallet.claim(dQuickToken.address, signers[0].address)
       
-      expect(claim).to.emit(sushiToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "20");
-      expect(claim).to.emit(sushiToken, "Transfer").withArgs(wallet, signers[0].address, "80");
+      expect(claim).to.emit(dQuickToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(dQuickToken, "Transfer").withArgs(wallet, signers[0].address, "80");
 
-      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(sushiToken.address, yieldWalletFactory.address, "20");
-      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(sushiToken.address, signers[0].address, "80");
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(dQuickToken.address, yieldWalletFactory.address, "20");
+      expect(claim).to.emit(yieldwallet, "WithdrawFund").withArgs(dQuickToken.address, signers[0].address, "80");
     })
 
     it('should emit claim token event', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
+
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(
@@ -823,28 +1013,30 @@ describe('SushiSwapYieldWallet', function () {
       
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
   
-      await sushiToken.transfer(wallet, "100")
+      await dQuickToken.transfer(wallet, "100")
   
       await expect(
         yieldwallet
-          .claim(sushiToken.address, signers[0].address)
+          .claim(dQuickToken.address, signers[0].address)
       ).to.emit(yieldwallet, "Claim")
-      .withArgs(sushiToken.address, signers[0].address, "80");
+      .withArgs(dQuickToken .address, signers[0].address, "80");
     })
   })
 
-  describe('#getWalletInfo & #getPendingRewards', async () => {
+  describe('#getWalletInfo', async () => {
 
     it('should return correct yield wallet info', async function () {
+
+      await rewardFactory.deploy(ethDaiPair.address, "100000000000000000000" ,604800);
 
       // lock lpt and stake ot farming contract
       let lockAmount = ethers.utils.parseEther('1').toString()
@@ -859,42 +1051,34 @@ describe('SushiSwapYieldWallet', function () {
   
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
   
-      let SushiSwapYieldWallet = await ethers.getContractFactory(
-        'SushiSwapYieldWallet'
+      let QuickSwapYieldWallet = await ethers.getContractFactory(
+        'QuickSwapYieldWallet'
       )
       let yieldwallet = new ethers.Contract(
         wallet,
-        SushiSwapYieldWallet.interface.fragments,
+        QuickSwapYieldWallet.interface.fragments,
         signers[0]
       )
 
       let info = await yieldwallet.getWalletInfo();
 
-      expect(info.amount.toString()).to.be.equal(lockAmount);
-      expect(info.rewardDebt.toString()).to.be.equal("0");
-
-      let pendingReward = await yieldwallet.getPendingRewards()
-      expect(pendingReward.toString()).to.be.equal("0");
+      expect(info.stakedAmount.toString()).to.be.equal(lockAmount);
+      expect(info.earned.toString()).to.be.equal("0");
 
       await network.provider.send("evm_mine") // mine 1 block
 
       let info2 = await yieldwallet.getWalletInfo();
 
-      expect(info2.amount.toString()).to.be.equal(lockAmount);
-      expect(info2.rewardDebt.toString()).to.be.equal("0");
-
-      let pendingReward2 = await yieldwallet.getPendingRewards()
-      expect(pendingReward2.toString()).to.be.equal("100000000000000000000");
+      expect(info2.stakedAmount.toString()).to.be.equal(lockAmount);
+      expect(info2.earned.toString()).to.be.equal("0");
 
       await network.provider.send("evm_mine") // mine 1 block
 
       let info3 = await yieldwallet.getWalletInfo();
 
-      expect(info3.amount.toString()).to.be.equal(lockAmount);
-      expect(info3.rewardDebt.toString()).to.be.equal("0");
+      expect(info3.stakedAmount.toString()).to.be.equal(lockAmount);
+      expect(info3.earned.toString()).to.be.equal("0");
 
-      let pendingReward3 = await yieldwallet.getPendingRewards()
-      expect(pendingReward3.toString()).to.be.equal("200000000000000000000");
     })
 
   })
