@@ -21,6 +21,8 @@ interface IStakingRewards {
     
     function rewardsToken() external view returns(address);
 
+    function periodFinish() external view returns(uint256);
+
     function balanceOf(address account) external view returns(uint256);
 
     function earned(address account) external view returns(uint256);

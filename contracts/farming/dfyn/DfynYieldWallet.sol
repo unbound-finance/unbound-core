@@ -139,6 +139,17 @@ contract DfynYieldWallet {
         earned = IStakingRewards(stakingContract).earned(address(this));
     }
 
+    /**
+     * @notice Return pool expires time
+     */
+    function periodFinish()
+        external
+        view
+        returns (uint256)
+    {
+        return IStakingRewards(stakingContract).periodFinish();
+    }
+
     /* ========== INTERNAL FUNCTIONS ========== */
 
     function _withdrawFunds(
