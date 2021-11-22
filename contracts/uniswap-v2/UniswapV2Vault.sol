@@ -27,6 +27,8 @@ contract UniswapV2Vault is UnboundVaultBase {
 
     event Lock(address _user, uint256 _collateral, uint256 _uTokenAmount);
     event Unlock(address _user, uint256 _collateral, uint256 _uTokenAmount);
+    event Stake(address _user, uint256 _amount);
+    event Unstake(address _user, uint256 _amount);
 
     /**
      * @notice Creates new vault
@@ -258,10 +260,13 @@ contract UniswapV2Vault is UnboundVaultBase {
         pair.transfer(yieldWallet[msg.sender], _amount);
         // deposit to yield
         IUnboundYieldWallet(yieldWallet[msg.sender]).deposit(_amount);
+
+        emit Stake(msg.sender, _amount);
     }
 
     function unstakeLP(uint256 _amount) external whenNotPaused {
         _unstakeLP(msg.sender, _amount);
+        emit Unstake(msg.sender, _amount);
     }
 
     function _unstakeLP(address _user, uint256 _amount)
