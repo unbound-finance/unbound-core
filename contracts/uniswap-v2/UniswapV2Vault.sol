@@ -210,7 +210,7 @@ contract UniswapV2Vault is UnboundVaultBase {
 
         burn(msg.sender, _uTokenAmount);
 
-        if (yieldWalletDeposit[msg.sender] > 0) {
+        if (yieldWalletDeposit[msg.sender] >= amount) {
             amount = _unstakeLP(msg.sender, amount);
 
             // transfer pool tokens back to the user
@@ -272,7 +272,7 @@ contract UniswapV2Vault is UnboundVaultBase {
         internal
         returns (uint256 amount)
     {
-        require(yieldWalletDeposit[_user] >= _amount, 'invalid');
+        // require(yieldWalletDeposit[_user] >= _amount, 'invalid');
 
         // remove LP tokens from yield wallet first
         uint256 balanceBefore = pair.balanceOf(address(this));
@@ -284,7 +284,6 @@ contract UniswapV2Vault is UnboundVaultBase {
         yieldWalletDeposit[_user] = yieldWalletDeposit[_user].sub(amount);
 
         emit Unstake(_user, yieldWallet[_user], _amount);
-
     }
 
     /**
