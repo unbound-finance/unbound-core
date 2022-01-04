@@ -26,7 +26,7 @@ let undDaiPair
 let vaultFactory
 let oracleLibrary
 
-let feedEthUsd
+let chainlinkRegistry
 let ethDaiVault
 
 const ethPrice = '320000000000' // $3200
@@ -112,18 +112,24 @@ describe('KyberVault', function () {
       MAX_UINT_AMOUNT
     )
 
-    let TestAggregatorProxyEthUsd = await ethers.getContractFactory(
-      'TestAggregatorProxyEthUsd'
-    )
-    feedEthUsd = await TestAggregatorProxyEthUsd.deploy()
-    await feedEthUsd.setPrice(ethPrice) // 1 ETH = $3200
+    let pairToken0 = await ethDaiPair.token0()
+    let pairToken1 = await ethDaiPair.token1()
+
+    let ChainlinkRegistryMock = await ethers.getContractFactory("ChainlinkRegistryMock");
+    chainlinkRegistry = await ChainlinkRegistryMock.deploy(pairToken0, pairToken1);
+
+    await chainlinkRegistry.setDecimals(8);
+    await chainlinkRegistry.setAnswer(
+        ethPrice,
+        "100000000"
+    ); 
 
     await vaultFactory.createVault(
       und.address,
       signers[0].address,
       ethDaiPair.address,
       tDai.address,
-      [feedEthUsd.address],
+      chainlinkRegistry.address,
       '900000000000000000', // 10%
       5000,
       undDaiPair
@@ -191,8 +197,8 @@ describe('KyberVault', function () {
       expect(await ethDaiVault.isBase(1)).to.equal(isBase1)
     })
 
-    it('should set the feed address correctly', async function () {
-      expect(await ethDaiVault.feeds(0)).to.equal(feedEthUsd.address)
+    it('should set the registry address correctly', async function () {
+      expect(await ethDaiVault.registry()).to.equal(chainlinkRegistry.address)
     })
 
     it('should set the maxPercentDiff correctly', async function () {
@@ -217,7 +223,7 @@ describe('KyberVault', function () {
           signers[0].address,
           ethDaiPair.address,
           tDai.address,
-          [feedEthUsd.address],
+          chainlinkRegistry.address,
           '900000000000000000', // 10%
           5000,
           undDaiPair
@@ -231,7 +237,7 @@ describe('KyberVault', function () {
           signers[0].address,
           zeroAddress,
           tDai.address,
-          [feedEthUsd.address],
+          chainlinkRegistry.address,
           '900000000000000000', // 10%
           5000,
           undDaiPair
@@ -245,7 +251,7 @@ describe('KyberVault', function () {
           signers[0].address,
           ethDaiPair.address,
           zeroAddress,
-          [feedEthUsd.address],
+          chainlinkRegistry.address,
           '900000000000000000', // 10%
           5000,
           undDaiPair
@@ -253,20 +259,6 @@ describe('KyberVault', function () {
       ).to.be.revertedWith('I')
     })
 
-    it('should revert if feeds length is more then 2', async function () {
-      await expect(
-        vaultFactory.createVault(
-          und.address,
-          signers[0].address,
-          ethDaiPair.address,
-          tDai.address,
-          [feedEthUsd.address, feedEthUsd.address, feedEthUsd.address],
-          '900000000000000000', // 10%
-          5000,
-          undDaiPair
-        )
-      ).to.be.revertedWith('IF')
-    })
     it('should revert if pair address is not valid', async function () {
         await expect(
           vaultFactory.createVault(
@@ -274,7 +266,7 @@ describe('KyberVault', function () {
             signers[0].address,
             tEth.address,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             '900000000000000000', // 10%
             5000,
             undDaiPair
@@ -292,7 +284,7 @@ describe('KyberVault', function () {
           signers[0].address,
           pairToken.address,
           tDai.address,
-          [feedEthUsd.address, feedEthUsd.address],
+          chainlinkRegistry.address,
           '900000000000000000', // 10%
           5000,
           undDaiPair
@@ -533,7 +525,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -587,7 +579,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -678,7 +670,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -758,7 +750,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -838,7 +830,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -905,7 +897,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -1012,7 +1004,7 @@ describe('KyberVault', function () {
       // let lptPrice = await getOraclePriceForLPT(
       //     ethDaiPair,
       //     tDai.address,
-      //     feedEthUsd.address
+      //     chainlinkRegistry.address
       // );
 
       let lptPrice = await calculateLPTPriceFromUniPool(
@@ -2667,12 +2659,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
+      await chainlinkRegistry.setAnswer(
+        "200000000000", //$2000
+        "100000000"
+      ); 
 
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $91.92
 
@@ -2711,12 +2706,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
-
+      await chainlinkRegistry.setAnswer(
+        "200000000000", //$2000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $91.92
 
@@ -2754,12 +2752,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
-
+      await chainlinkRegistry.setAnswer(
+        "200000000000", //$2000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $91.92
 
@@ -2840,12 +2841,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
-
+      await chainlinkRegistry.setAnswer(
+        "200000000000", //$2000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $91.92
 
@@ -2902,12 +2906,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('200000000000') //$2000
-
+      await chainlinkRegistry.setAnswer(
+        "200000000000", //$2000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $91.92
 
@@ -2984,12 +2991,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('400000000000') //$4000
-
+      await chainlinkRegistry.setAnswer(
+        "400000000000", //$4000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $127.2792
 
@@ -3031,12 +3041,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('400000000000') //$4000
-
+      await chainlinkRegistry.setAnswer(
+        "400000000000", //$4000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $127.2792
 
@@ -3080,12 +3093,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('400000000000') //$4000
-
+      await chainlinkRegistry.setAnswer(
+        "400000000000", //$4000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $127.2792
 
@@ -3143,12 +3159,15 @@ describe('KyberVault', function () {
         await ethDaiVault.collateral(signers[0].address)
       ).toString()
 
-      await feedEthUsd.setPrice('400000000000') //$4000
-
+      await chainlinkRegistry.setAnswer(
+        "400000000000", //$4000
+        "100000000"
+      ); 
+      
       let lptprice = await getOraclePriceForLPT(
         ethDaiPair,
         tDai.address,
-        feedEthUsd.address
+        chainlinkRegistry.address
       )
       lptprice = lptprice.toString() // $127.2792
 
@@ -3724,7 +3743,7 @@ describe('KyberVault', function () {
   })
 })
 
-async function getOraclePriceForLPT(pair, stablecoin, feed) {
+async function getOraclePriceForLPT(pair, stablecoin, registry) {
   return new Promise(async function (resolve, reject) {
     let maxPercentDiff = '900000000000000000'
     let allowedDelay = 5000
@@ -3750,7 +3769,7 @@ async function getOraclePriceForLPT(pair, stablecoin, feed) {
     let price = await oracleLibrary.latestAnswer(
       pair.address,
       [token0Decimals, token1Decimals],
-      [feed],
+      registry,
       [isBase0, isBase1],
       maxPercentDiff,
       allowedDelay

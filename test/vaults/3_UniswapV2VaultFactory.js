@@ -18,7 +18,7 @@ let undDaiPair;
 let vaultFactory;
 let oracleLibrary;
 
-let feedEthUsd;
+let chainlinkRegistry;
 
 describe("UniswapV2VaultFactory", function() {
 
@@ -64,9 +64,19 @@ describe("UniswapV2VaultFactory", function() {
         undDaiPair = await uniswapFactory.getPair(und.address, tDai.address)
         ethDaiPair = await uniswapFactory.getPair(tEth.address, tDai.address)
 
-        let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
-        feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
-        await feedEthUsd.setPrice(ethPrice) // 1 ETH = $3000
+        let ethDaiPairContract = await ethers.getContractAt('UniswapV2Pair', ethDaiPair)
+
+        let pairToken0 = await ethDaiPairContract.token0()
+        let pairToken1 = await ethDaiPairContract.token1()
+    
+        let ChainlinkRegistryMock = await ethers.getContractFactory("ChainlinkRegistryMock");
+        chainlinkRegistry = await ChainlinkRegistryMock.deploy(pairToken0, pairToken1);
+    
+        await chainlinkRegistry.setDecimals(8);
+        await chainlinkRegistry.setAnswer(
+            ethPrice,
+            "100000000"
+        ); 
     });
 
     describe("#constructor", async () => {
@@ -130,7 +140,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -144,7 +154,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -163,7 +173,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -180,7 +190,7 @@ describe("UniswapV2VaultFactory", function() {
     //         signers[0].address,
     //         ethDaiPair,
     //         tDai.address,
-    //         [feedEthUsd.address],
+    //         [chainlinkRegistry.address],
     //         "900000000000000000",
     //         5000,
     //         undDaiPair
@@ -193,7 +203,7 @@ describe("UniswapV2VaultFactory", function() {
     //         signers[0].address,
     //         ethDaiPair,
     //         tDai.address,
-    //         [feedEthUsd.address],
+    //         [chainlinkRegistry.address],
     //         "900000000000000000",
     //         5000,
     //         undDaiPair
@@ -225,7 +235,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -248,7 +258,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -267,7 +277,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -290,7 +300,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -322,7 +332,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -345,7 +355,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -368,7 +378,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -394,7 +404,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -467,7 +477,7 @@ describe("UniswapV2VaultFactory", function() {
             signers[0].address,
             ethDaiPair,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000",
             5000,
             undDaiPair
@@ -538,7 +548,7 @@ describe("UniswapV2VaultFactory", function() {
 //                 signers[0].address,
 //                 ethDaiPair,
 //                 tDai.address,
-//                 [feedEthUsd.address],
+//                 [chainlinkRegistry.address],
 //                 "900000000000000000",
 //                 5000,
 //                 undDaiPair
@@ -567,7 +577,7 @@ describe("UniswapV2VaultFactory", function() {
 //                 signers[0].address,
 //                 ethDaiPair,
 //                 tDai.address,
-//                 [feedEthUsd.address],
+//                 [chainlinkRegistry.address],
 //                 "900000000000000000",
 //                 5000,
 //                 undDaiPair
@@ -581,7 +591,7 @@ describe("UniswapV2VaultFactory", function() {
 //             signers[0].address,
 //             ethDaiPair,
 //             tDai.address,
-//             [feedEthUsd.address],
+//             [chainlinkRegistry.address],
 //             "900000000000000000",
 //             5000,
 //             undDaiPair

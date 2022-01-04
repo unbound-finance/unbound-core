@@ -21,7 +21,7 @@ let undDaiPair;
 let vaultFactory;
 let oracleLibrary;
 
-let feedEthUsd;
+let chainlinkRegistry;
 
 const LTV = "50000000" // 50%
 const CR = "200000000" // 200%
@@ -91,16 +91,24 @@ describe("UnboundToken", function() {
             MAX_UINT_AMOUNT
         );
 
-        let TestAggregatorProxyEthUsd = await ethers.getContractFactory("TestAggregatorProxyEthUsd");
-        feedEthUsd = await TestAggregatorProxyEthUsd.deploy();
-        await feedEthUsd.setPrice(ethPrice) // 1 ETH = $3200
+        let pairToken0 = await ethDaiPair.token0()
+        let pairToken1 = await ethDaiPair.token1()
 
+        let ChainlinkRegistryMock = await ethers.getContractFactory("ChainlinkRegistryMock");
+        chainlinkRegistry = await ChainlinkRegistryMock.deploy(pairToken0, pairToken1);
+
+        await chainlinkRegistry.setDecimals(8);
+        await chainlinkRegistry.setAnswer(
+            ethPrice,
+            "100000000"
+        ); 
+      
         await vaultFactory.createVault(
             und.address,
             signers[0].address,
             ethDaiPair.address,
             tDai.address,
-            [feedEthUsd.address],
+            chainlinkRegistry.address,
             "900000000000000000", // 10%
             5000,
             undDaiPair
