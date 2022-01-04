@@ -56,7 +56,7 @@ contract UniswapV2VaultFactory {
      * @param _governance Address of the governance
      * @param _pair Address of the pool token
      * @param _stablecoin Address of the stablecoin
-     * @param _feeds Array of the chainlink feeds to get weighed asset
+     * @param _registry Chainlink registry address
      * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
      * @param _allowedDelay Allowed delay for Chainlink price update
      * @param _staking Address where the stake fees should be donated
@@ -66,7 +66,7 @@ contract UniswapV2VaultFactory {
         address _governance,
         address _pair,
         address _stablecoin,
-        address[] memory _feeds,
+        address _registry,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
         address _staking
@@ -77,7 +77,7 @@ contract UniswapV2VaultFactory {
                 _governance,
                 _pair,
                 _stablecoin,
-                _feeds,
+                _registry,
                 _maxPercentDiff,
                 _allowedDelay,
                 _staking,
