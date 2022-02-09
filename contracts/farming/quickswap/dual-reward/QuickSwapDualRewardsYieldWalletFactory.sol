@@ -12,7 +12,7 @@ contract QuickSwapDualRewardsYieldWalletFactory is Ownable {
     address public team; // Address of team where part of reward will be sent
     address public rewardFactoryContract; // RewardFactoryContract (Dual) contract address where LPTs will be staked
 
-    uint256 public constant teamShare = 2e17; // 1e18 is 100%, setting it to 20%
+    uint256 public teamShare = 2e17; // 1e18 is 100%, setting it to 20%
 
     event YeildWalletFactory(address _wallet);
     event DistributeFee(address _rewardToken, uint256 _amount);
@@ -70,5 +70,16 @@ contract QuickSwapDualRewardsYieldWalletFactory is Ownable {
         require(_team != address(0), 'IA');
         team = _team;
         emit ChangeTeamFeeAddress(_team);
+    }
+
+    /**
+     * @notice Changes team share percentage for farming rewards
+     * @param _teamShare Share percentage, 1e18 is 100%
+     */
+    function changeTeamShare(uint256 _teamShare)
+        external
+        onlyOwner
+    {
+        teamShare = _teamShare;
     }
 }

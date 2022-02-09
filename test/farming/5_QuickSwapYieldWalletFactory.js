@@ -282,6 +282,25 @@ describe('QuickSwapYieldWalletFactory', function () {
 
     });
 
-})
+  })
+
+  describe("#changeTeamShare", function() {
+
+    it("should revert if not called by owner", async function() { 
+      await expect(yieldWalletFactory.connect(signers[1]).changeTeamShare(signers[1].address))
+          .to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("should change team share percentage", async function() { 
+
+      expect(await yieldWalletFactory.teamShare()).to.eq("200000000000000000")
+
+      await yieldWalletFactory.changeTeamShare("0");
+
+      expect(await yieldWalletFactory.teamShare()).to.eq("0")
+
+    })
+
+  })
 
 })
