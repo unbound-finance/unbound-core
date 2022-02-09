@@ -145,11 +145,15 @@ contract QuickSwapDualRewardsYieldWallet {
             uint256 teamShare = _amount.mul(teamSharePercentage).div(1e18);
             userShare = _amount.sub(teamShare);
 
-            _token.safeTransfer(factory, teamShare);
-            _token.safeTransfer(_to, userShare);
+            if(teamShare > 0){
+                _token.safeTransfer(factory, teamShare);
+                emit WithdrawFund(address(_token), factory, teamShare);
+            }
 
-            emit WithdrawFund(address(_token), factory, teamShare);
-            emit WithdrawFund(address(_token), _to, userShare);
+            if(userShare > 0){
+                _token.safeTransfer(_to, userShare);
+                emit WithdrawFund(address(_token), _to, userShare);
+            }
 
         }
     }
