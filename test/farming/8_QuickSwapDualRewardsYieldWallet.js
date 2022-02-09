@@ -917,6 +917,80 @@ describe('QuickSwapDualRewardsYieldWallet', function () {
       expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(wMaticToken.address, signers[0].address, "533333333333333333");
     })
 
+    it('unlock - should transfer dQuick reward to user and team if teamShare is 50%', async function () {
+      
+      await yieldWalletFactory.changeTeamShare("500000000000000000")
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      
+      let QuickSwapDualRewardsYieldWallet = await ethers.getContractFactory(
+        'QuickSwapDualRewardsYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        QuickSwapDualRewardsYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      let stakingContract = await yieldWallet.stakingContract();
+
+
+      await rewardFactory.notifyRewardAmounts();
+
+      let reward = await yieldWallet.getReward();
+          
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(stakingContract, wallet, "333333333333333333")
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "166666666666666666")
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(wallet, signers[0].address, "166666666666666667")
+
+      expect(reward).to.emit(wMaticToken, "Transfer").withArgs(stakingContract, wallet, "666666666666666666")
+      expect(reward).to.emit(wMaticToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "333333333333333333")
+      expect(reward).to.emit(wMaticToken, "Transfer").withArgs(wallet, signers[0].address, "333333333333333333")
+
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, yieldWalletFactory.address, "166666666666666666");
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, signers[0].address, "166666666666666667");
+
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(wMaticToken.address, yieldWalletFactory.address, "333333333333333333");
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(wMaticToken.address, signers[0].address, "333333333333333333");
+    })
+
+    it('unlock - should transfer dQuick reward to only user if teamShare is 0%', async function () {
+      
+      await yieldWalletFactory.changeTeamShare("0")
+
+      let collateral = (await ethDaiVault.collateral(signers[0].address)).toString()
+
+      let wallet = await ethDaiVault.yieldWallet(signers[0].address)
+      
+      let QuickSwapDualRewardsYieldWallet = await ethers.getContractFactory(
+        'QuickSwapDualRewardsYieldWallet'
+      )
+      let yieldWallet = new ethers.Contract(
+        wallet,
+        QuickSwapDualRewardsYieldWallet.interface.fragments,
+        signers[0]
+      )
+
+      let stakingContract = await yieldWallet.stakingContract();
+
+
+      await rewardFactory.notifyRewardAmounts();
+
+      let reward = await yieldWallet.getReward();
+          
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(stakingContract, wallet, "333333333333333333")
+      expect(reward).to.emit(dQuickToken, "Transfer").withArgs(wallet, signers[0].address, "333333333333333333")
+
+      expect(reward).to.emit(wMaticToken, "Transfer").withArgs(stakingContract, wallet, "666666666666666666")
+      expect(reward).to.emit(wMaticToken, "Transfer").withArgs(wallet, signers[0].address, "666666666666666666")
+
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(dQuickToken.address, signers[0].address, "333333333333333333");
+
+      expect(reward).to.emit(yieldWallet, "WithdrawFund").withArgs(wMaticToken.address, signers[0].address, "666666666666666666");
+    })
+
     it('unlock - should emit reward paid event', async function () {
       
       let wallet = await ethDaiVault.yieldWallet(signers[0].address)
