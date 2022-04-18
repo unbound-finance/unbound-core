@@ -30,6 +30,7 @@ let ethDaiVault
 let yieldWalletFactory
 
 let rewardFactory;
+var stakingContract
 let dQuickToken; 
 
 const ethPrice = '320000000000' // $3200
@@ -134,10 +135,16 @@ describe('DfynYieldWalletFactory', function () {
     let DfynStakingRewardsFactory = await ethers.getContractFactory('DfynStakingRewardsFactory')
     rewardFactory = await DfynStakingRewardsFactory.deploy(dQuickToken.address, timestamp + 10)
 
+    await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+    await dQuickToken.transfer(rewardFactory.address, "300000000000000000000000");
+
+    let _stakingContract = await rewardFactory.stakingRewardsInfoByStakingToken(ethDaiPair.address);
+    stakingContract = _stakingContract.stakingRewards;
+
     let DfynYieldWalletFactory = await ethers.getContractFactory(
       'DfynYieldWalletFactory'
     )
-    yieldWalletFactory = await DfynYieldWalletFactory.deploy(rewardFactory.address)
+    yieldWalletFactory = await DfynYieldWalletFactory.deploy(stakingContract)
 
     await ethDaiVault.changeLTV(LTV)
     await ethDaiVault.changeCR(CR)
@@ -159,7 +166,7 @@ describe('DfynYieldWalletFactory', function () {
   describe('#constructor', async () => {
 
     it("should set farming contract address", async function() { 
-      expect(await yieldWalletFactory.rewardFactoryContract()).to.equal(rewardFactory.address);
+      expect(await yieldWalletFactory.stakingContract()).to.equal(stakingContract);
     });
 
     it("should set correct owner address", async function() { 
@@ -172,19 +179,15 @@ describe('DfynYieldWalletFactory', function () {
 
     it('should revert if staking token is invalid for pool', async function () {
       
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-
       await expect(yieldWalletFactory.create(
         dQuickToken.address,
         signers[0].address,
         ethDaiVault.address
-      )).to.be.revertedWith("IP");
+      )).to.be.revertedWith("IC");
 
     })
 
     it('should create yield wallet contract without revert', async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       await yieldWalletFactory.create(
         ethDaiPair.address,
@@ -194,8 +197,6 @@ describe('DfynYieldWalletFactory', function () {
     })
 
     it('should create new yield wallet for first time user staking LPT', async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
@@ -220,8 +221,6 @@ describe('DfynYieldWalletFactory', function () {
 
     it('should emit event when creating new yield wallet for first time user locking LPT', async function () {
       
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-
       expect(await ethDaiVault.yieldWallet(signers[0].address)).to.be.equal(
         zeroAddress
       )

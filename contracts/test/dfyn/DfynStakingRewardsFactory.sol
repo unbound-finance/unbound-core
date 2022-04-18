@@ -966,6 +966,13 @@ contract DfynStakingRewards is IStakingRewards, RewardsDistributionRecipient, Re
                 rewards[account]
             );
     }
+    
+    function earned(address account, address rewardToken) public view returns (uint256) {
+        return
+            _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(
+                rewards[account]
+            );
+    }
 
     function getRewardForDuration() external view override returns (uint256) {
         return rewardRate.mul(rewardsDuration);

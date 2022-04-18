@@ -139,10 +139,16 @@ describe('DfynYieldWallet', function () {
     let DfynStakingRewardsFactory = await ethers.getContractFactory('DfynStakingRewardsFactory')
     rewardFactory = await DfynStakingRewardsFactory.deploy(dfynToken.address, timestamp + 10)
 
+    await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
+    await dfynToken.transfer(rewardFactory.address, "300000000000000000000000");
+
+    let _stakingContract = await rewardFactory.stakingRewardsInfoByStakingToken(ethDaiPair.address);
+    _stakingContract = _stakingContract.stakingRewards;
+
     let DfynYieldWalletFactory = await ethers.getContractFactory(
       'DfynYieldWalletFactory'
     )
-    yieldWalletFactory = await DfynYieldWalletFactory.deploy(rewardFactory.address)
+    yieldWalletFactory = await DfynYieldWalletFactory.deploy(_stakingContract)
     await yieldWalletFactory.changeTeamFeeAddress(signers[3].address);
 
     await ethDaiVault.changeLTV(LTV)
@@ -164,8 +170,6 @@ describe('DfynYieldWallet', function () {
   describe('#constructor', async () => {
     let yieldwalletInstance
     beforeEach(async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -201,9 +205,9 @@ describe('DfynYieldWallet', function () {
       expect(await yieldwalletInstance.vault()).to.be.equal(ethDaiVault.address)
     })
 
-    it('should set correct farmin contract address', async function () {
-      expect(await yieldwalletInstance.stakingRewardFactory()).to.be.equal(rewardFactory.address)
-    })
+    // it('should set correct farmin contract address', async function () {
+    //   expect(await yieldwalletInstance.stakingRewardFactory()).to.be.equal(rewardFactory.address)
+    // })
 
     it('should set staking contract address', async function () {
       expect(await yieldwalletInstance.stakingContract()).to.not.equal(zeroAddress)
@@ -214,18 +218,12 @@ describe('DfynYieldWallet', function () {
       expect(await ethDaiPair.allowance(yieldwalletInstance.address, stakingContract)).to.be.equal(MAX_UINT_AMOUNT)
     })
 
-    it('should set reward token contract address', async function () {
-      expect(await yieldwalletInstance.rewardsToken()).to.be.equal(dfynToken.address)
-    })
+    // it('should set reward token contract address', async function () {
+    //   expect(await yieldwalletInstance.rewardsToken()).to.be.equal(dfynToken.address)
+    // })
   })
 
   describe('#deposit', async () => {
-
-    beforeEach(async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-
-    })
     
     it('should revert if caller is not vault', async function () {
 
@@ -379,7 +377,7 @@ describe('DfynYieldWallet', function () {
       )
       let info = await yieldwallet.getWalletInfo();
 
-      expect(info.stakedAmount.toString()).to.be.equal(lockAmount)
+      expect(info.toString()).to.be.equal(lockAmount)
 
     })
 
@@ -564,7 +562,7 @@ describe('DfynYieldWallet', function () {
       
       let info = await yieldwallet.getWalletInfo();
   
-      expect(info.stakedAmount.toString()).to.be.equal(permitAmount)
+      expect(info.toString()).to.be.equal(permitAmount)
   
     })
   
@@ -622,8 +620,6 @@ describe('DfynYieldWallet', function () {
 
   describe('#withdraw', async () => {
     beforeEach(async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -734,9 +730,9 @@ describe('DfynYieldWallet', function () {
       await ethDaiVault.unstakeLP(collateral);
       
       let infoAfter = await yieldwallet.getWalletInfo();
-      let infoAfterExpected = new BigNumber(infoBefore.stakedAmount.toString()).minus(collateral).toFixed();
+      let infoAfterExpected = new BigNumber(infoBefore.toString()).minus(collateral).toFixed();
 
-      expect(infoAfter.stakedAmount.toString()).to.be.equal(infoAfterExpected)
+      expect(infoAfter.toString()).to.be.equal(infoAfterExpected)
 
     })
 
@@ -826,10 +822,6 @@ describe('DfynYieldWallet', function () {
 
   describe('#getReward', async () => {
     beforeEach(async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-      await dfynToken.transfer(rewardFactory.address, "300000000000000000000000");
-
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
       await ethDaiVault.lock(lockAmount, signers[0].address, '1')
@@ -860,7 +852,7 @@ describe('DfynYieldWallet', function () {
         signers[0]
       )
 
-      await expect(yieldwallet.connect(signers[1]).getReward()).to.be.revertedWith('NA')
+      await expect(yieldwallet.connect(signers[1]).getReward(dfynToken.address)).to.be.revertedWith('NA')
     })
 
     it('unlock - should transfer DFYN reward to user', async function () {
@@ -883,7 +875,7 @@ describe('DfynYieldWallet', function () {
 
       await ethers.provider.send("evm_increaseTime", [87000])   // increase evm time by 1 days
 
-      let reward = await yieldWallet.getReward();
+      let reward = await yieldWallet.getReward(dfynToken.address);
           
       expect(reward).to.emit(dfynToken, "Transfer").withArgs(stakingContract, wallet, "74999999999999999995200")
       expect(reward).to.emit(dfynToken, "Transfer").withArgs(wallet, yieldWalletFactory.address, "14999999999999999999040")
@@ -921,7 +913,7 @@ describe('DfynYieldWallet', function () {
 
       await ethers.provider.send("evm_increaseTime", [87000])   // increase evm time by 1 days
 
-      let reward = await yieldWallet.getReward();
+      let reward = await yieldWallet.getReward(dfynToken.address);
           
       expect(reward).to.emit(stakingContract, "RewardPaid").withArgs(wallet, "74999999999999999995200")
     })
@@ -929,8 +921,6 @@ describe('DfynYieldWallet', function () {
 
   describe('#claim', async () => {
     it('should revert if caller is not user', async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -961,8 +951,6 @@ describe('DfynYieldWallet', function () {
     })
 
     it('should transfer token to user account', async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -997,8 +985,6 @@ describe('DfynYieldWallet', function () {
     })
 
     it('should emit claim token event', async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -1035,8 +1021,6 @@ describe('DfynYieldWallet', function () {
 
     it('should return correct yield wallet info', async function () {
 
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-
       // lock lpt and stake ot farming contract
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
@@ -1059,24 +1043,26 @@ describe('DfynYieldWallet', function () {
         signers[0]
       )
 
-      let info = await yieldwallet.getWalletInfo();
+      let stakedAmount = await yieldwallet.getWalletInfo();
+      let earned = await yieldwallet.earned(dfynToken.address);
 
-      expect(info.stakedAmount.toString()).to.be.equal(lockAmount);
-      expect(info.earned.toString()).to.be.equal("0");
-
-      await network.provider.send("evm_mine") // mine 1 block
-
-      let info2 = await yieldwallet.getWalletInfo();
-
-      expect(info2.stakedAmount.toString()).to.be.equal(lockAmount);
-      expect(info2.earned.toString()).to.be.equal("0");
+      expect(stakedAmount.toString()).to.be.equal(lockAmount);
+      expect(earned.toString()).to.be.equal("0");
 
       await network.provider.send("evm_mine") // mine 1 block
 
-      let info3 = await yieldwallet.getWalletInfo();
+      let stakedAmount2 = await yieldwallet.getWalletInfo();
+      let earned2 = await yieldwallet.earned(dfynToken.address);
 
-      expect(info3.stakedAmount.toString()).to.be.equal(lockAmount);
-      expect(info3.earned.toString()).to.be.equal("0");
+      expect(stakedAmount2.toString()).to.be.equal(lockAmount);
+      expect(earned2.toString()).to.be.equal("0");
+
+      await network.provider.send("evm_mine") // mine 1 block
+
+      let stakedAmount3 = await yieldwallet.getWalletInfo();
+      let earned3 = await yieldwallet.earned(dfynToken.address);
+      expect(stakedAmount3.toString()).to.be.equal(lockAmount);
+      expect(earned3.toString()).to.be.equal("0");
 
     })
 
@@ -1085,9 +1071,6 @@ describe('DfynYieldWallet', function () {
   describe('#setVestingConfig & getUserVestingInfo', async () => {
 
     beforeEach(async function () {
-
-      await rewardFactory.deploy(ethDaiPair.address, "300000000000000000000000" ,86400, 35, 15552000, 3, 25);
-      await dfynToken.transfer(rewardFactory.address, "300000000000000000000000");
 
       let lockAmount = ethers.utils.parseEther('1').toString()
       await ethDaiPair.approve(ethDaiVault.address, lockAmount)
