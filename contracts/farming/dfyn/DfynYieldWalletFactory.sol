@@ -10,7 +10,7 @@ contract DfynYieldWalletFactory is Ownable {
     using SafeERC20 for IERC20;
 
     address public team; // Address of team where part of reward will be sent
-    address public rewardFactoryContract; // RewardFactoryContract (Dual) contract address where LPTs will be staked
+    address public stakingContract; // StakingContract address where LPTs will be staked
 
     uint256 public constant teamShare = 2e17; // 1e18 is 100%, setting it to 20%
 
@@ -18,8 +18,11 @@ contract DfynYieldWalletFactory is Ownable {
     event DistributeFee(address _rewardToken, uint256 _amount);
     event ChangeTeamFeeAddress(address _team);
 
+    /**
+     * @param _farming StakingContract address where LPTs will be staked
+     */
     constructor(address _farming) {
-        rewardFactoryContract = _farming;
+        stakingContract = _farming;
     }
 
     /**
@@ -38,7 +41,7 @@ contract DfynYieldWalletFactory is Ownable {
                 _pair,
                 _user,
                 _vault,
-                rewardFactoryContract
+                stakingContract
             )
         );
         emit YeildWalletFactory(wallet);
