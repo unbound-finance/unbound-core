@@ -30,6 +30,8 @@ interface IMasterChefPancake {
         //   4. User's `rewardDebt` gets updated.
     }
 
+    function lpToken(uint256 _pid) external view returns(IERC20);
+
     function poolInfo(uint256 _pid) external view returns(PoolInfo memory);
 
     function userInfo(uint256 _pis, address _user) external view returns(UserInfo memory);

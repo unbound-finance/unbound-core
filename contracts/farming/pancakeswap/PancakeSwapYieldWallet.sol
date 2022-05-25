@@ -47,10 +47,9 @@ contract PancakeSwapYieldWallet {
         address _farming,
         uint256 _pid
     ) {
-        IMasterChefPancake.PoolInfo memory pool = IMasterChefPancake(_farming)
-            .poolInfo(_pid);
+        IERC20 lpToken = IMasterChefPancake(_farming).lpToken(_pid);
 
-        require(address(pool.lpToken) == _pair, 'IP');
+        require(address(lpToken) == _pair, 'IP');
 
         pair = _pair;
         user = _user;
