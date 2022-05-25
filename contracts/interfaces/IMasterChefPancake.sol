@@ -38,7 +38,7 @@ interface IMasterChefPancake {
 
     function pendingCake(uint256 _pid, address _user) external view returns (uint256);
 
-    function cake() external view returns (address);
+    function CAKE() external view returns (address);
 
     function deposit(uint256 _pid, uint256 _amount) external;
 

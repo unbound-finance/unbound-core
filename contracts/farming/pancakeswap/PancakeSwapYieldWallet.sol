@@ -58,7 +58,7 @@ contract PancakeSwapYieldWallet {
         pid = _pid;
         factory = msg.sender;
 
-        rewardToken = IERC20(IMasterChefPancake(_farming).cake());
+        rewardToken = IERC20(IMasterChefPancake(_farming).CAKE());
 
         // approve allowance to farming contract
         IERC20(_pair).approve(_farming, type(uint256).max);
