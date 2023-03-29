@@ -17,12 +17,9 @@ contract DfynYieldWallet {
     address public user; // owner of the yieldWallet
     address public vault; // factory from which this vault is deployed
 
-    address public stakingRewardFactory; // Address of staking rewardd factory contract
     address public stakingContract; // Address where LPTs will be staked
 
     address public factory; // Address of the yield wallet factory
-
-    IERC20 public rewardsToken; // Reward token instance;
 
     mapping(address => bool) allowed;
 
@@ -44,22 +41,16 @@ contract DfynYieldWallet {
         address _pair,
         address _user,
         address _vault,
-        address _stakingRewardFactory
+        address _stakingContract
     ) {
 
-        IStakingRewards.StakingRewardsInfo memory info = IStakingRewards(_stakingRewardFactory)
-            .stakingRewardsInfoByStakingToken(_pair);
+        stakingContract = _stakingContract;
 
-        require(info.stakingRewards != address(0), 'IP');
-
-        stakingContract = info.stakingRewards;
+        require(IStakingRewards(_stakingContract).stakingToken() == _pair, 'IC');
         
-        rewardsToken = IERC20(IStakingRewards(stakingContract).rewardsToken());
-
         pair = _pair;
         user = _user;
         vault = _vault;
-        stakingRewardFactory = _stakingRewardFactory;
         factory = msg.sender;
 
         // approve allowance to staking contract
@@ -88,13 +79,14 @@ contract DfynYieldWallet {
 
     /**
      * @notice Withdraw All rewards
+     * @param _rewardToken rewards token address to withdraw funds
      */
-    function getReward() external onlyOwner {
+    function getReward(IERC20 _rewardToken) external onlyOwner {
 
         IStakingRewards(stakingContract).getReward();
 
         // Send Rewards token to user  
-        _withdrawFunds(rewardsToken, user, rewardsToken.balanceOf(address(this)));
+        _withdrawFunds(_rewardToken, user, _rewardToken.balanceOf(address(this)));
 
     }
 
@@ -133,10 +125,20 @@ contract DfynYieldWallet {
     function getWalletInfo()
         external
         view
-        returns (uint256 stakedAmount, uint256 earned)
+        returns (uint256 stakedAmount)
     {
         stakedAmount = IStakingRewards(stakingContract).balanceOf(address(this));
-        earned = IStakingRewards(stakingContract).earned(address(this));
+    }
+
+    /**
+     * @notice Return wallet info including deposited amount and reward data
+     */
+    function earned(address _rewardToken)
+        external
+        view
+        returns (uint256 _earned)
+    {
+        _earned = IStakingRewards(stakingContract).earned(address(this), _rewardToken);
     }
 
     /**

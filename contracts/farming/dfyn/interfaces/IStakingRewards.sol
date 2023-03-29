@@ -17,15 +17,19 @@ interface IStakingRewards {
         bool hasSetConfig;
     }
 
-    function stakingRewardsInfoByStakingToken(address stakingToken) external view returns(StakingRewardsInfo memory);
+    function stakingToken() external view returns(address);
     
     function rewardsToken() external view returns(address);
+
+    function rewardsTokens(uint256 _index) external view returns(address);
 
     function periodFinish() external view returns(uint256);
 
     function balanceOf(address account) external view returns(uint256);
 
     function earned(address account) external view returns(uint256);
+    
+    function earned(address account, address rewardToken) external view returns(uint256);
 
     function stake(uint256 _amount) external;
 
