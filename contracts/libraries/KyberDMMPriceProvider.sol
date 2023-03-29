@@ -2,10 +2,13 @@
 pragma solidity >=0.7.6;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
+import "@chainlink/contracts/src/v0.7/Denominations.sol";
 
 import '../interfaces/IChainlinkAggregatorV3Interface.sol';
 import '../interfaces/IDMMFactory.sol';
 import '../interfaces/IDMMPool.sol';
+
+import "@chainlink/contracts/src/v0.7/interfaces/FeedRegistryInterface.sol";
 
 library KyberDMMPriceProvider {
     using SafeMath for uint256;
@@ -139,44 +142,45 @@ library KyberDMMPriceProvider {
 
     /**
      * Returns price from Chainlink feed
-     * @param _feed Chainlink feed address
+     * @param _registry Chainlink registry address
      * @param _allowedDelay Allowed delay to check chainlink update delay
      * @return Chainlink price
      */
-    function getChainlinkPrice(address _feed, uint256 _allowedDelay)
+    function getChainlinkPrice(
+        address _registry,
+        uint256 _allowedDelay,
+        address _base,
+        address _quote
+    )
         internal
         view
         returns (uint256)
     {
-        IChainlinkAggregatorV3Interface feed = IChainlinkAggregatorV3Interface(
-            _feed
-        );
-        (, int256 _price, , uint256 _updatedAt, ) = feed.latestRoundData();
+        FeedRegistryInterface registry = FeedRegistryInterface(_registry);
+        (, int256 _price, , uint256 _updatedAt, ) = registry.latestRoundData(_base, _quote);
+
         // check if the oracle is expired
         require(_updatedAt >= block.timestamp.sub(_allowedDelay), 'OLD');
-        uint256 price = normalise(uint256(_price), feed.decimals());
+        uint256 price = normalise(uint256(_price), registry.decimals(_base, _quote));
         return uint256(price);
     }
 
     /**
      * @notice Get latest price from Chainlink
-     * @param _feeds Array of the Chainlink feeds
+     * @param _registry Chainlink registry address
      * @param _allowedDelay Allowed delay in the Chainlink price update
+     * @param _pair KyberDMM pair address
      * @return price Latest chainlink price
      */
-    function getLatestPrice(address[] memory _feeds, uint256 _allowedDelay)
+    function getLatestPrice(address _registry, uint256 _allowedDelay, IDMMPool _pair)
         public
         view
         returns (uint256 price)
     {
-        if (_feeds.length == 2) {
-            uint256 price0 = getChainlinkPrice(_feeds[0], _allowedDelay);
-            uint256 price1 = getChainlinkPrice(_feeds[1], _allowedDelay);
+            uint256 price0 = getChainlinkPrice(_registry, _allowedDelay, address(_pair.token0()), Denominations.USD);
+            uint256 price1 = getChainlinkPrice(_registry, _allowedDelay, address(_pair.token1()), Denominations.USD);
 
             price = price0.mul(price1).div(BASE);
-        } else {
-            price = getChainlinkPrice(_feeds[0], _allowedDelay);
-        }
     }
 
     /**
@@ -231,7 +235,7 @@ library KyberDMMPriceProvider {
      *   If there is a price deviation, instead of the reserves, it uses a weighted geometric mean with constant invariant K.
      * @param _pair Address of the Kyber DMM pool
      * @param _decimals Array of the number of decimals in both pairs
-     * @param _feeds Array of Chainlink feeds
+     * @param _registry Chainlink registry address
      * @param _maxPercentDiff Maximum percentage different when GM should come in effect
      * @param _allowedDelay Allowed delay in Chainlink update
      * @return int256 price
@@ -239,7 +243,7 @@ library KyberDMMPriceProvider {
     function latestAnswer(
         address _pair,
         uint256[] memory _decimals,
-        address[] memory _feeds,
+        address _registry,
         bool[] memory _isBase,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay
@@ -250,9 +254,9 @@ library KyberDMMPriceProvider {
         uint256 chainlinkPrice1;
         if (_isBase[0]) {
             chainlinkPrice0 = BASE;
-            chainlinkPrice1 = uint256(getLatestPrice(_feeds, _allowedDelay));
+            chainlinkPrice1 = uint256(getLatestPrice(_registry, _allowedDelay, pair));
         } else {
-            chainlinkPrice0 = uint256(getLatestPrice(_feeds, _allowedDelay));
+            chainlinkPrice0 = uint256(getLatestPrice(_registry, _allowedDelay, pair));
             chainlinkPrice1 = BASE;
         }
 

@@ -21,7 +21,7 @@ contract KyberVault is UnboundVaultBase {
     uint256[] public decimals;
     uint256 public maxPercentDiff;
     uint256 public allowedDelay;
-    address[] public feeds;
+    address public registry;
 
     IMigratorVault public migrator; // Instance of new vault contract
 
@@ -36,7 +36,7 @@ contract KyberVault is UnboundVaultBase {
      * @param _governance Address of the governance
      * @param _pair Address of the pool token
      * @param _stablecoin Address of the stablecoin
-     * @param _feeds Array of the chainlink feeds to get weighed asset
+     * @param _registry Chainlink registry address to get weighed asset
      * @param _maxPercentDiff Percent deviation for oracle price. 1e8 is 100%
      * @param _allowedDelay Allowed delay for Chainlink price update, in Epoch secondss
      * @param _staking Address where the stake fees should be donated
@@ -47,7 +47,7 @@ contract KyberVault is UnboundVaultBase {
         address _governance,
         address _pair,
         address _stablecoin,
-        address[] memory _feeds,
+        address _registry,
         uint256 _maxPercentDiff,
         uint256 _allowedDelay,
         address _staking,
@@ -59,8 +59,6 @@ contract KyberVault is UnboundVaultBase {
                 _stablecoin != address(0),
             'I'
         );
-
-        require(_feeds.length <= 2, 'IF');
 
         uToken = IUnboundToken(_uToken);
         governance = _governance;
@@ -91,7 +89,7 @@ contract KyberVault is UnboundVaultBase {
         isBase.push(isBase0);
         isBase.push(isBase1);
 
-        feeds = _feeds;
+        registry = _registry;
         maxPercentDiff = _maxPercentDiff;
         allowedDelay = _allowedDelay;
 
@@ -170,7 +168,7 @@ contract KyberVault is UnboundVaultBase {
         int256 price = KyberDMMPriceProvider.latestAnswer(
             address(pair),
             decimals,
-            feeds,
+            registry,
             isBase,
             maxPercentDiff,
             allowedDelay
@@ -303,7 +301,7 @@ contract KyberVault is UnboundVaultBase {
         int256 price = KyberDMMPriceProvider.latestAnswer(
             address(pair),
             decimals,
-            feeds,
+            registry,
             isBase,
             maxPercentDiff,
             allowedDelay
